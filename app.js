@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuración ---
     // <<< ¡ASEGÚRATE QUE ESTA URL SEA LA CORRECTA DE TU ARCHIVO RAW EN GITHUB! >>>
-    const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortps/main/Lista%20estandar%20Raul.csv'; // URL GitHub RAW
+    const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/refs/heads/main/Lista%20estandar%20Raul.csv'; // URL GitHub RAW
     const ITEMS_PER_PAGE = 20;
     const IVA_RATE = 0.16;
 

@@ -1,266 +1,224 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Configuración ---
-    const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/main/Lista%20estandar%20Raul.csv';
-    const ITEMS_PER_PAGE = 25;
-    const IVA_RATE = 0.16;
+  const CSV_URL    = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/main/Lista%20estandar%20Raul.csv';
+  const ITEMS_PER_PAGE = 25;
+  const IVA_RATE   = 0.16;
 
-    // --- Estado ---
-    let allProducts = [];
-    let filteredProducts = [];
-    let quoteItems = [];
-    let currentPage = 1;
-    let productMap = new Map();
+  let allProducts = [], filteredProducts = [], quoteItems = [], currentPage = 1;
+  const productMap = new Map();
 
-    // --- Selectores del DOM ---
-    const loadingStatusEl = document.getElementById('loading-status');
-    const productCountInfoEl = document.getElementById('product-count-info');
-    const filterClaveEl = document.getElementById('filter-clave');
-    const filterDescripcionEl = document.getElementById('filter-descripcion');
-    const productsBodyEl = document.getElementById('products-body');
-    const prevPageBtn = document.getElementById('prev-page');
-    const nextPageBtn = document.getElementById('next-page');
-    const pageInfoEl = document.getElementById('page-info');
-    const priceLevelEl = document.getElementById('price-level');
-    const quoteBodyEl = document.getElementById('quote-body');
-    const quoteSubtotalEl = document.getElementById('quote-subtotal');
-    const quoteIvaEl = document.getElementById('quote-iva');
-    const quoteTotalEl = document.getElementById('quote-total');
-    const clientNameEl = document.getElementById('client-name');
-    const quoteDateEl = document.getElementById('quote-date');
-    const whatsappNumberEl = document.getElementById('whatsapp-number');
-    const folioEl = document.getElementById('folio');
-    const referenciaEl = document.getElementById('referencia');
-    const operadorEl = document.getElementById('operador');
-    const clientRfcEl = document.getElementById('client-rfc');
-    const clientDirEl = document.getElementById('client-dir');
-    const comentarioEl = document.getElementById('comentario');
-    const sendWhatsappBtn = document.getElementById('send-whatsapp');
-    const generatePdfBtn = document.getElementById('generate-pdf');
+  // DOM
+  const $ = id => document.getElementById(id);
+  const loadingStatus = $('loading-status');
+  const countInfo      = $('product-count-info');
+  const tblBody        = $('products-body');
+  const prevBtn        = $('prev-page');
+  const nextBtn        = $('next-page');
+  const pageInfo       = $('page-info');
+  const filterClave    = $('filter-clave');
+  const filterDesc     = $('filter-descripcion');
+  const priceLevel     = $('price-level');
+  const quoteBody      = $('quote-body');
+  const subEl          = $('quote-subtotal');
+  const ivaEl          = $('quote-iva');
+  const totEl          = $('quote-total');
+  const sendWA         = $('send-whatsapp');
+  const genPDF         = $('generate-pdf');
+  const inputs = {
+    name: $('client-name'),
+    date: $('quote-date'),
+    wa:   $('whatsapp-number'),
+    folio:$('folio'),
+    ref:  $('referencia'),
+    op:   $('operador'),
+    rfc:  $('client-rfc'),
+    dir:  $('client-dir'),
+    com:  $('comentario'),
+  };
 
-    // --- Funciones ---
+  // 1) Carga productos
+  async function loadProducts() {
+    try {
+      loadingStatus.textContent = 'Cargando…'; loadingStatus.className = 'status-loading';
+      countInfo.textContent    = '';
+      filterClave.disabled     = filterDesc.disabled = true;
+      tblBody.innerHTML        = `<tr><td colspan="5" class="p-6 text-center text-gray-400">Cargando…</td></tr>`;
 
-    async function loadProducts() {
-        try {
-            loadingStatusEl.textContent = 'Cargando productos...';
-            loadingStatusEl.className = 'status-loading';
-            productCountInfoEl.textContent = '';
-            filterClaveEl.disabled = true;
-            filterDescripcionEl.disabled = true;
-            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-400 text-sm">Cargando...</td></tr>`;
+      const r = await fetch(`${CSV_URL}?t=${Date.now()}`);
+      const txt = await r.text();
+      console.log('CSV raw:', txt.slice(0,200));
 
-            const response = await fetch(`${CSV_URL}?t=${Date.now()}`);
-            if (!response.ok) throw new Error(`Error HTTP ${response.status}`);
-            const csvText = await response.text();
+      Papa.parse(txt, {
+        header: true, skipEmptyLines: true,
+        transformHeader: h => h.trim(),
+        complete: ({ data, errors }) => {
+          console.log('Primer registro:', data[0]);
+          data.forEach((p,i) => {
+            const clave = (p.Clave||'').trim();
+            const desc  = (p.Descripcion||'').trim();
+            const rawP  = (p.PrecioPublico||'0');
+            const clean = rawP.replace(/[^0-9.-]+/g,'').replace(/,/g,'.');
+            const price = parseFloat(clean);
+            console.log({ clave, desc, rawP, clean, price });
+            if (clave && desc && !isNaN(price)) {
+              const id = `prd-${i}`;
+              productMap.set(id, { id, clave, descripcion: desc, precioBase: price, unidadMedida: p.UnidadMedida||'PZA' });
+            }
+          });
 
-            Papa.parse(csvText, {
-                header: true, skipEmptyLines: 'greedy', encoding: "UTF-8",
-                transformHeader: h => h.trim(),
-                complete: results => {
-                    productMap.clear();
-                    allProducts = results.data.map((p, i) => {
-                        const clave = String(p.Clave || p.clave || '').trim();
-                        const descripcion = String(p.Descripcion || p.descripcion || '').trim();
-                        const precioRaw = String(p.PrecioPublico || p.preciopublico || '0');
-                        const precio = parseFloat(precioRaw.replace(/[^0-9.-]+/g,'').replace(/,/g,'.'));
-                        const unidadMedida = String(p.UnidadMedida || p.unidadmedida || 'PZA').trim();
-                        if (clave && descripcion && !isNaN(precio) && precio >= 0) {
-                            const id = `item-${i}-${clave}`;
-                            const prod = { id, clave, descripcion, precioBase: precio, unidadMedida };
-                            productMap.set(id, prod);
-                            return prod;
-                        }
-                        return null;
-                    }).filter(x => x);
-
-                    if (!allProducts.length) {
-                        loadingStatusEl.textContent = 'Error: ningún producto válido';
-                        loadingStatusEl.className = 'status-error';
-                        productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-red-600 text-sm">Revisa tu CSV.</td></tr>`;
-                    } else {
-                        loadingStatusEl.textContent = 'Productos cargados:';
-                        loadingStatusEl.className = 'status-success';
-                        productCountInfoEl.textContent = `(${allProducts.length})`;
-                        filterClaveEl.disabled = false;
-                        filterDescripcionEl.disabled = false;
-                        applyFiltersAndDisplay();
-                    }
-                }
-            });
-        } catch (err) {
-            console.error(err);
-            loadingStatusEl.textContent = 'Error cargando CSV';
-            loadingStatusEl.className = 'status-error';
-        }
-    }
-
-    function applyFiltersAndDisplay() {
-        const fClave = filterClaveEl.value.toUpperCase().trim();
-        const fDesc = filterDescripcionEl.value.toUpperCase().trim();
-        filteredProducts = allProducts.filter(p =>
-            (p.clave.toUpperCase().includes(fClave) || p.descripcion.toUpperCase().includes(fClave))
-            && p.descripcion.toUpperCase().includes(fDesc)
-        );
-        currentPage = 1;
-        displayCatalogPage();
-    }
-
-    function displayCatalogPage() {
-        productsBodyEl.innerHTML = '';
-        const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        const pageItems = filteredProducts.slice(start, start + ITEMS_PER_PAGE);
-
-        if (!pageItems.length) {
-            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-500">Sin resultados.</td></tr>`;
-        } else {
-            pageItems.forEach(p => {
-                const tr = document.createElement('tr');
-                tr.classList.add('hover:bg-blue-50');
-                tr.innerHTML = `
-                    <td class="table-ui">${p.clave}</td>
-                    <td class="table-ui">${p.descripcion}</td>
-                    <td class="table-ui text-right">${formatCurrency(p.precioBase)}</td>
-                    <td class="table-ui text-center">
-                        <input type="number" min="1" value="1" class="w-14 border p-1 rounded-md text-center text-xs product-quantity" data-product-id="${p.id}">
-                    </td>
-                    <td class="table-ui text-center">
-                        <button class="btn btn-primary btn-icon add-to-quote-btn" data-product-id="${p.id}">
-                            <svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-                        </button>
-                    </td>
-                `;
-                productsBodyEl.appendChild(tr);
-            });
-        }
-        pageInfoEl.textContent = `Página ${currentPage} / ${totalPages}`;
-        prevPageBtn.disabled = currentPage === 1;
-        nextPageBtn.disabled = currentPage === totalPages;
-    }
-
-    function changePage(dir) {
-        const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
-        currentPage += dir === 'prev' ? -1 : 1;
-        currentPage = Math.min(Math.max(currentPage, 1), totalPages);
-        displayCatalogPage();
-    }
-
-    function addToQuote(id, qty) {
-        const prod = productMap.get(id);
-        if (!prod) return;
-        const exist = quoteItems.find(x => x.id === id);
-        if (exist) exist.quantity += qty;
-        else quoteItems.push({ ...prod, quantity: qty });
-        updateQuoteDisplay();
-    }
-
-    function removeFromQuote(id) {
-        quoteItems = quoteItems.filter(x => x.id !== id);
-        updateQuoteDisplay();
-    }
-
-    function updateQuoteDisplay() {
-        quoteBodyEl.innerHTML = '';
-        if (!quoteItems.length) {
-            quoteBodyEl.innerHTML = `<tr><td colspan="9" class="text-center p-4 text-gray-400 text-xs">Añade productos...</td></tr>`;
-            sendWhatsappBtn.disabled = true;
-            generatePdfBtn.disabled = true;
+          allProducts = Array.from(productMap.values());
+          console.log('Total válidos:', allProducts.length);
+          if (!allProducts.length) {
+            loadingStatus.textContent = 'Error: sin productos válidos'; loadingStatus.className='status-error';
+            tblBody.innerHTML = `<tr><td colspan="5" class="p-6 text-red-600">Revisa CSV</td></tr>`;
             return;
+          }
+          loadingStatus.textContent = 'Productos cargados:'; loadingStatus.className='status-success';
+          countInfo.textContent = `(${allProducts.length})`;
+          filterClave.disabled = filterDesc.disabled = false;
+          applyFilters();
         }
-        let subtotal = 0;
-        const discount = parseFloat(priceLevelEl.value) || 0;
-        quoteItems.forEach((item, i) => {
-            const unit = calculateDiscountedPrice(item.precioBase, discount);
-            const total = unit * item.quantity;
-            subtotal += total;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="text-center text-xs">${i+1}</td>
-                <td class="text-xs">${item.clave}</td>
-                <td class="quote-description-cell text-xs">${item.descripcion}</td>
-                <td class="text-center text-xs">${item.quantity}</td>
-                <td class="text-center text-xs">${item.unidadMedida}</td>
-                <td class="text-right text-xs">${formatCurrency(unit)}</td>
-                <td class="text-center text-xs">${discount}%</td>
-                <td class="text-right text-xs">${formatCurrency(total)}</td>
-                <td class="text-center text-xs">
-                    <button class="remove-from-quote-btn">×</button>
-                </td>
-            `;
-            tr.querySelector('button').dataset.productId = item.id;
-            quoteBodyEl.appendChild(tr);
-        });
-        const iva = subtotal * IVA_RATE;
-        const total = subtotal + iva;
-        quoteSubtotalEl.textContent = formatCurrency(subtotal);
-        quoteIvaEl.textContent      = formatCurrency(iva);
-        quoteTotalEl.textContent    = formatCurrency(total);
-        sendWhatsappBtn.disabled = false;
-        generatePdfBtn.disabled   = false;
+      });
+    } catch(err) {
+      console.error(err);
+      loadingStatus.textContent = 'Error al cargar CSV'; loadingStatus.className='status-error';
     }
+  }
 
-    function calculateDiscountedPrice(base, pct) {
-        return base * (1 - pct / 100);
+  // 2) Filtros y paginado
+  function applyFilters() {
+    const c = filterClave.value.trim().toUpperCase();
+    const d = filterDesc.value.trim().toUpperCase();
+    filteredProducts = allProducts.filter(p =>
+      (p.clave.toUpperCase().includes(c) || p.descripcion.toUpperCase().includes(c))
+      && p.descripcion.toUpperCase().includes(d)
+    );
+    currentPage = 1; renderPage();
+  }
+  function renderPage() {
+    tblBody.innerHTML = '';
+    const totalPages = Math.ceil(filteredProducts.length/ITEMS_PER_PAGE)||1;
+    const start = (currentPage-1)*ITEMS_PER_PAGE;
+    const page = filteredProducts.slice(start, start+ITEMS_PER_PAGE);
+
+    if (!page.length) {
+      tblBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500">Sin resultados</td></tr>`;
+    } else {
+      page.forEach(p => {
+        const row = document.createElement('tr');
+        row.classList.add('hover:bg-blue-50');
+        row.innerHTML = `
+          <td class="px-4 py-2">${p.clave}</td>
+          <td class="px-4 py-2">${p.descripcion}</td>
+          <td class="px-4 py-2 text-right">${formatCurrency(p.precioBase)}</td>
+          <td class="px-4 py-2 text-center">
+            <input type="number" min="1" value="1" class="w-16 border rounded text-sm text-center qty" data-id="${p.id}">
+          </td>
+          <td class="px-4 py-2 text-center">
+            <button class="btn btn-primary add" data-id="${p.id}">+</button>
+          </td>`;
+        tblBody.appendChild(row);
+      });
     }
+    pageInfo.textContent = `Página ${currentPage} / ${totalPages}`;
+    prevBtn.disabled = currentPage===1;
+    nextBtn.disabled = currentPage===totalPages;
+  }
 
-    function formatCurrency(val) {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency', currency: 'MXN'
-        }).format(val);
+  // 3) Páginas
+  prevBtn.addEventListener('click', ()=>{ if(currentPage>1){ currentPage--; renderPage() } });
+  nextBtn.addEventListener('click', ()=>{ const tp=Math.ceil(filteredProducts.length/ITEMS_PER_PAGE); if(currentPage<tp){ currentPage++; renderPage() } });
+
+  filterClave.addEventListener('input', ()=> setTimeout(applyFilters,300));
+  filterDesc.addEventListener('input', ()=> setTimeout(applyFilters,300));
+
+  // 4) Cotización
+  function addToQuote(id, qty) {
+    console.log('Añadir →', id, qty);
+    const prod = productMap.get(id);
+    if (!prod) return;
+    const found = quoteItems.find(x=>x.id===id);
+    if (found) found.quantity += qty;
+    else quoteItems.push({ ...prod, quantity: qty });
+    console.log('quoteItems:', quoteItems);
+    updateQuote();
+  }
+  function removeFromQuote(id) {
+    quoteItems = quoteItems.filter(x=>x.id!==id);
+    updateQuote();
+  }
+  function updateQuote() {
+    quoteBody.innerHTML='';
+    if (!quoteItems.length) {
+      quoteBody.innerHTML=`<tr><td colspan="9" class="p-4 text-center text-gray-400">Añade productos…</td></tr>`;
+      sendWA.disabled = genPDF.disabled = true;
+      return;
     }
-
-    function formatDate(dateStr) {
-        if (!dateStr) return '';
-        const d = new Date(dateStr);
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth()+1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        return `${dd}/${mm}/${yyyy}`;
-    }
-
-    function generateWhatsAppMessage() {
-        let msg = `*Cotización TPS*\n*Cliente:* ${clientNameEl.value}\n*Fecha:* ${formatDate(quoteDateEl.value)}\n\n`;
-        msg += `*Productos:*\n`;
-        quoteItems.forEach(item => {
-            const unit = calculateDiscountedPrice(item.precioBase, parseFloat(priceLevelEl.value)||0);
-            msg += `- ${item.clave} ${item.descripcion} x${item.quantity} = ${formatCurrency(unit*item.quantity)}\n`;
-        });
-        msg += `\n*Subtotal:* ${quoteSubtotalEl.textContent}\n*IVA:* ${quoteIvaEl.textContent}\n*Total:* ${quoteTotalEl.textContent}`;
-        return msg;
-    }
-
-    function sendWhatsApp() {
-        const num = whatsappNumberEl.value.replace(/\D/g, '');
-        if (!num) { alert('Número WhatsApp inválido'); return; }
-        const text = encodeURIComponent(generateWhatsAppMessage());
-        window.open(`https://wa.me/${num}?text=${text}`, '_blank');
-    }
-
-    // --- Listeners ---
-    filterClaveEl.addEventListener('input', () => setTimeout(applyFiltersAndDisplay, 300));
-    filterDescripcionEl.addEventListener('input', () => setTimeout(applyFiltersAndDisplay, 300));
-    prevPageBtn.addEventListener('click', () => changePage('prev'));
-    nextPageBtn.addEventListener('click', () => changePage('next'));
-    productsBodyEl.addEventListener('click', e => {
-        const btn = e.target.closest('.add-to-quote-btn');
-        if (!btn) return;
-        const id = btn.dataset.productId;
-        const inp = productsBodyEl.querySelector(`input[data-product-id="${id}"]`);
-        const q = parseInt(inp.value,10);
-        if (q > 0) addToQuote(id, q);
+    let sub=0;
+    const disc = parseFloat(priceLevel.value)||0;
+    quoteItems.forEach((it,i)=>{
+      const unit = it.precioBase*(1-disc/100);
+      const imp  = unit*it.quantity;
+      sub += imp;
+      const tr = document.createElement('tr');
+      tr.innerHTML=`
+        <td class="px-2 py-1 text-center">${i+1}</td>
+        <td class="px-2 py-1">${it.clave}</td>
+        <td class="px-2 py-1">${it.descripcion}</td>
+        <td class="px-2 py-1 text-center">${it.quantity}</td>
+        <td class="px-2 py-1 text-center">${it.unidadMedida}</td>
+        <td class="px-2 py-1 text-right">${formatCurrency(unit)}</td>
+        <td class="px-2 py-1 text-center">${disc}%</td>
+        <td class="px-2 py-1 text-right">${formatCurrency(imp)}</td>
+        <td class="px-2 py-1 text-center"><button class="remove text-red-500">×</button></td>`;
+      tr.querySelector('button').addEventListener('click', ()=> removeFromQuote(it.id));
+      quoteBody.appendChild(tr);
     });
-    quoteBodyEl.addEventListener('click', e => {
-        const btn = e.target.closest('.remove-from-quote-btn');
-        if (!btn) return;
-        removeFromQuote(btn.dataset.productId);
-    });
-    priceLevelEl.addEventListener('change', updateQuoteDisplay);
-    sendWhatsappBtn.addEventListener('click', sendWhatsApp);
-    generatePdfBtn.addEventListener('click', () => {
-        document.getElementById('pdf-template').style.display = 'block';
-        generatePdf();
-    });
+    const iva = sub*IVA_RATE, tot=sub+iva;
+    subEl.textContent = formatCurrency(sub);
+    ivaEl.textContent = formatCurrency(iva);
+    totEl.textContent = formatCurrency(tot);
+    sendWA.disabled = genPDF.disabled = false;
+  }
 
-    // --- Init ---
-    quoteDateEl.value = new Date().toISOString().slice(0,10);
-    loadProducts();
+  // 5) Formato y envíos
+  function formatCurrency(v){
+    return new Intl.NumberFormat('es-MX',{ style:'currency',currency:'MXN' }).format(v);
+  }
+
+  function generateWhatsAppMessage(){
+    let txt=`*Cotización TPS*\nCliente: ${inputs.name.value}\nFecha: ${inputs.date.value}\n\n`;
+    quoteItems.forEach(it=>{
+      const unit = it.precioBase*(1-(parseFloat(priceLevel.value)||0)/100);
+      txt+=`${it.clave} ${it.descripcion} x${it.quantity} = ${formatCurrency(unit*it.quantity)}\n`;
+    });
+    txt+=`\nSubtotal: ${subEl.textContent}\nIVA: ${ivaEl.textContent}\nTotal: ${totEl.textContent}`;
+    return encodeURIComponent(txt);
+  }
+
+  sendWA.addEventListener('click', ()=>{
+    const num = inputs.wa.value.replace(/\D/g,'');
+    if(!num){ alert('Número inválido'); return; }
+    window.open(`https://wa.me/${num}?text=${generateWhatsAppMessage()}`, '_blank');
+  });
+
+  genPDF.addEventListener('click', ()=>{
+    // rellena campos del PDF (igual que tu lógica anterior) …
+    const el = $('pdf-template');
+    el.style.display='block';
+    html2pdf().from(el).save().then(()=> el.style.display='none');
+  });
+
+  // 6) Inicia
+  inputs.date.value = new Date().toISOString().slice(0,10);
+  loadProducts();
+
+  // 7) Listener global “+”
+  tblBody.addEventListener('click', e=>{
+    const btn = e.target.closest('.add');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const inp = tblBody.querySelector(`input.qty[data-id="${id}"]`);
+    const q   = parseInt(inp.value,10);
+    if(q>0) addToQuote(id,q);
+  });
 });

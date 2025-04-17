@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuración ---
-    // <<< ¡CONFIRMA QUE ESTA ES LA URL RAW CORRECTA DE TU CSV EN GITHUB! >>>
     const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/main/Lista%20estandar%20Raul.csv'; // URL GitHub RAW
     const ITEMS_PER_PAGE = 20;
     const IVA_RATE = 0.16;
@@ -63,13 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
             filterDescripcionEl.disabled = true;
             productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-gray-500">Cargando...</td></tr>`;
 
-            const urlWithTimestamp = `${CSV_URL}?t=${new Date().getTime()}`; // Evita caché
+            const urlWithTimestamp = `${CSV_URL}?t=${new Date().getTime()}`;
             const response = await fetch(urlWithTimestamp);
-            if (!response.ok) throw new Error(`Error HTTP ${response.status} al cargar CSV desde GitHub.`);
+            if (!response.ok) throw new Error(`Error HTTP ${response.status} al cargar CSV.`);
             const csvText = await response.text();
 
             Papa.parse(csvText, {
-                // header: true, // Comentado, leemos por índice
                 skipEmptyLines: 'greedy',
                 encoding: "UTF-8",
                 complete: (results) => {
@@ -83,34 +81,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
 
-                    const dataRows = results.data.slice(1); // Ignora la fila de encabezados
+                    const dataRows = results.data.slice(1);
 
                     productMap.clear();
                     allProducts = dataRows
                         .map((row, index) => {
-                            // Leyendo por ÍNDICE DE COLUMNA (0=Clave, 1=Desc, 2=Precio)
                             const clave = String(row[0] || '').trim();
                             const descripcion = String(row[1] || '').trim();
                             const precioStrRaw = String(row[2] || '0');
-                            // const unidadMedida = String(row[3] || 'PZA').trim(); // Si tuvieras columna UM
-
                             const precioStrClean = precioStrRaw.replace(/[$,\s]/g, '').replace(/,/g, '');
                             const precio = parseFloat(precioStrClean);
                             const internalId = `item-${index + 1}-${clave || Math.random().toString(16).slice(2)}`;
 
                             if (clave && descripcion && !isNaN(precio) && precio >= 0) {
                                 const productData = {
-                                    clave: clave,
-                                    descripcion: descripcion,
-                                    precioBase: precio,
-                                    unidadMedida: 'PZA', // Asume PZA
-                                    // unidadMedida: unidadMedida, // Si tuvieras columna UM
-                                    id: internalId
+                                    clave: clave, descripcion: descripcion, precioBase: precio,
+                                    unidadMedida: 'PZA', id: internalId
                                 };
                                 productMap.set(internalId, productData);
                                 return productData;
                             }
-                            console.warn(`   -> Fila ${index + 2} IGNORADA (Clave: ${!!clave}, Desc: ${!!descripcion}, Precio Válido: ${!isNaN(precio) && precio >= 0}) Datos:`, row);
+                            console.warn(`   -> Fila ${index + 2} IGNORADA. Datos:`, row);
                             return null;
                         })
                         .filter(p => p !== null);
@@ -119,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         loadingStatusEl.textContent = `Error: No se cargaron productos válidos.`;
                         loadingStatusEl.className = 'status-warning';
                         productCountInfoEl.textContent = `(0 productos - Revisa datos CSV)`;
-                        productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-orange-600">No se pudo procesar ningún producto válido. Verifica que las columnas Clave, Descripcion y PrecioPublico tengan datos correctos en tu archivo CSV.</td></tr>`;
+                        productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-orange-600">No se pudo procesar ningún producto válido. Verifica el contenido y formato del archivo CSV.</td></tr>`;
                     } else {
                         loadingStatusEl.textContent = `Productos cargados:`;
                         loadingStatusEl.className = 'status-success';
@@ -141,11 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingStatusEl.textContent = `Error al cargar desde GitHub: ${error.message}`;
             loadingStatusEl.className = 'status-error';
             productCountInfoEl.textContent = '(Error de carga)';
-            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-red-600">No se pudo cargar la lista. Verifica la URL del CSV y tu conexión a Internet.</td></tr>`;
+            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-red-600">No se pudo cargar la lista. Verifica la URL del CSV y tu conexión.</td></tr>`;
         }
-    } // Fin loadProducts
+    }
 
-    // --- Resto de funciones (sin cambios) ---
     function applyFiltersAndDisplay() {
         const filterClave = filterClaveEl.value.toUpperCase().trim();
         const filterDescripcion = filterDescripcionEl.value.toUpperCase().trim();
@@ -297,16 +287,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemTotal = unitPrice * item.quantity;
             pdfSubtotal += itemTotal;
             const row = document.createElement('tr');
+            // <<< AJUSTE PARA PDF: Añadir estilo word-break a la descripción >>>
             row.innerHTML = `
                 <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${index + 1}</td>
                 <td style="border: 1px solid #ccc; padding: 2px;">${item.clave}</td>
-                <td style="border: 1px solid #ccc; padding: 2px;">${item.descripcion}</td>
+                <td style="border: 1px solid #ccc; padding: 2px; word-break: break-word;">${item.descripcion}</td> {/* Estilo añadido */}
                 <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${item.quantity}</td>
                 <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${item.unidadMedida}</td>
                 <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">${formatCurrency(unitPrice).replace('MXN','')}</td>
                 <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${discountPercent}%</td>
                 <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">${formatCurrency(itemTotal).replace('MXN','')}</td>
             `;
+            // <<< FIN AJUSTE >>>
             pdfQuoteBodyEl.appendChild(row);
         });
         const pdfIva = pdfSubtotal * IVA_RATE;

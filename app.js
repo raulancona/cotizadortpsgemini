@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuración ---
-    const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/main/Lista%20estandar%20Raul.csv';
+    const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/main/Lista%20estandar%20Raul.csv'; // URL GitHub RAW
     const ITEMS_PER_PAGE = 20;
     const IVA_RATE = 0.16;
 
@@ -68,51 +68,62 @@ document.addEventListener('DOMContentLoaded', () => {
             const csvText = await response.text();
 
             Papa.parse(csvText, {
-                header: true, // Usamos encabezados, asumiendo que la 1ra línea es Clave,Descripcion,PrecioPublico
+                // header: true, // Comentado, leemos por índice
                 skipEmptyLines: 'greedy',
                 encoding: "UTF-8",
-                transformHeader: header => header.trim(),
                 complete: (results) => {
-                    if (results.errors.length > 0) { /* ... manejo error ... */ }
-                    console.log("Resultados de PapaParse:", results);
+                    console.log("Datos crudos:", results.data);
+
+                    if (!results.data || results.data.length < 2) {
+                        loadingStatusEl.textContent = `Error: Archivo CSV vacío o solo con encabezados.`;
+                        loadingStatusEl.className = 'status-error';
+                        productCountInfoEl.textContent = '(0 productos)';
+                        productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-red-600">El archivo CSV parece estar vacío o no tiene datos de productos.</td></tr>`;
+                        return;
+                    }
+
+                    const dataRows = results.data.slice(1); // Ignora la fila de encabezados
 
                     productMap.clear();
-                    allProducts = results.data
-                        .map((p, index) => {
-                            // --- LEYENDO POR NOMBRE DE COLUMNA ---
-                            // Asegúrate que tu CSV tenga EXACTAMENTE estos encabezados
-                            const clave = String(p.Clave || p.clave || '').trim(); // Intenta ambas capitalizaciones
-                            const descripcion = String(p.Descripcion || p.descripcion || '').trim();
-                            const precioStrRaw = String(p.PrecioPublico || p.preciopublico || '0');
-                            const unidadMedida = String(p.UnidadMedida || p.unidadmedida || 'PZA').trim();
+                    allProducts = dataRows
+                        .map((row, index) => {
+                            // Leyendo por ÍNDICE DE COLUMNA (0=Clave, 1=Desc, 2=Precio)
+                            const clave = String(row[0] || '').trim();
+                            const descripcion = String(row[1] || '').trim();
+                            const precioStrRaw = String(row[2] || '0');
+                            // const unidadMedida = String(row[3] || 'PZA').trim(); // Si tuvieras columna UM
 
                             const precioStrClean = precioStrRaw.replace(/[$,\s]/g, '').replace(/,/g, '');
                             const precio = parseFloat(precioStrClean);
-                            const internalId = `item-${index}-${clave || Math.random().toString(16).slice(2)}`;
+                            const internalId = `item-${index + 1}-${clave || Math.random().toString(16).slice(2)}`;
 
                             const isClaveValid = !!clave;
                             const isDescValid = !!descripcion;
                             const isPrecioValid = !isNaN(precio) && precio >= 0;
-                             // console.log(`Fila ${index + 2}: Clave='${clave}'(${isClaveValid}), Desc='${descripcion.substring(0,20)}...'(${isDescValid}), PrecioRaw='${precioStrRaw}', PrecioNum=${precio}(${isPrecioValid})`);
 
                             if (isClaveValid && isDescValid && isPrecioValid) {
                                 const productData = {
                                     clave: clave,
                                     descripcion: descripcion,
-                                    precioBase: precio, // Guardar el número limpio
-                                    unidadMedida: unidadMedida,
+                                    precioBase: precio, // Guarda el número limpio
+                                    unidadMedida: 'PZA', // Asume PZA
+                                    // unidadMedida: unidadMedida, // Si tuvieras columna UM
                                     id: internalId
                                 };
                                 productMap.set(internalId, productData);
                                 return productData;
                             }
-                            console.warn(`   -> Fila ${index + 2} IGNORADA. Datos:`, p);
+                            console.warn(`   -> Fila ${index + 2} IGNORADA. Datos:`, row);
                             return null;
                         })
                         .filter(p => p !== null);
 
-                    if (allProducts.length === 0) { /* ... manejo error ... */ }
-                    else {
+                    if (allProducts.length === 0) {
+                         loadingStatusEl.textContent = `Error: No se cargaron productos válidos.`;
+                         loadingStatusEl.className = 'status-warning';
+                         productCountInfoEl.textContent = `(0 productos - Revisa datos CSV)`;
+                         productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-orange-600">No se pudo procesar ningún producto válido. Verifica que las columnas Clave, Descripcion y PrecioPublico tengan datos correctos en tu archivo CSV.</td></tr>`;
+                    } else {
                         loadingStatusEl.textContent = `Productos cargados:`;
                         loadingStatusEl.className = 'status-success';
                         productCountInfoEl.textContent = `(${allProducts.length})`;
@@ -121,9 +132,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         applyFiltersAndDisplay();
                     }
                 },
-                error: (error) => { /* ... manejo error ... */ }
+                error: (error) => {
+                    console.error('Error al parsear CSV:', error);
+                    loadingStatusEl.textContent = `Error al procesar CSV: ${error.message}`;
+                    loadingStatusEl.className = 'status-error';
+                    productCountInfoEl.textContent = '(Error de parseo)';
+                }
             });
-        } catch (error) { /* ... manejo error ... */ }
+        } catch (error) {
+            console.error('Error al cargar productos:', error);
+            loadingStatusEl.textContent = `Error al cargar desde GitHub: ${error.message}`;
+            loadingStatusEl.className = 'status-error';
+            productCountInfoEl.textContent = '(Error de carga)';
+            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-red-600">No se pudo cargar la lista. Verifica la URL del CSV y tu conexión a Internet.</td></tr>`;
+        }
     } // Fin loadProducts
 
     function applyFiltersAndDisplay() {
@@ -149,11 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             pageProducts.forEach(product => {
                 const row = document.createElement('tr');
-                // <<< CORRECCIÓN: Solo mostrar el precio formateado, sin comentarios >>>
+                // <<< CORRECCIÓN: Solo mostrar el precio formateado >>>
                 row.innerHTML = `
                     <td class="align-top">${product.clave}</td>
                     <td class="align-top">${product.descripcion}</td>
-                    <td class="text-right align-top">${formatCurrency(product.precioBase)}</td> {/* Solo el precio */}
+                    <td class="text-right align-top">${formatCurrency(product.precioBase)}</td> {/* Sin comentario extra */}
                     <td class="text-center align-top">
                         <input type="number" min="1" value="1" class="w-16 border rounded px-1 py-0.5 text-center text-sm product-quantity" data-product-id="${product.id}">
                     </td>
@@ -168,18 +190,98 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePagination(totalPages);
     }
 
-    function updatePagination(totalPages) { /* ... igual ... */ }
-    function changePage(direction) { /* ... igual ... */ }
-    function addToQuote(productId, quantity) { /* ... igual ... */ }
-    function removeFromQuote(productId) { /* ... igual ... */ }
-    function updateQuoteDisplay() { /* ... igual ... */ }
-    function calculateDiscountedPrice(basePrice, discountPercent) { /* ... igual ... */ }
-    function formatCurrency(value) { /* ... igual ... */ }
-    function formatDate(dateString) { /* ... igual ... */ }
+    function updatePagination(totalPages) {
+        pageInfoEl.textContent = `Página ${currentPage} / ${totalPages > 0 ? totalPages : 1}`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    }
+
+    function changePage(direction) {
+        const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+        if (direction === 'next' && currentPage < totalPages) { currentPage++; }
+        else if (direction === 'prev' && currentPage > 1) { currentPage--; }
+        displayCatalogPage();
+    }
+
+    function addToQuote(productId, quantity) {
+        const product = productMap.get(productId);
+        if (!product || quantity <= 0) return;
+        const existingItem = quoteItems.find(item => item.id === productId);
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            quoteItems.push({ ...product, quantity: quantity });
+        }
+        updateQuoteDisplay();
+    }
+
+    function removeFromQuote(productId) {
+        quoteItems = quoteItems.filter(item => item.id !== productId);
+        updateQuoteDisplay();
+    }
+
+    function updateQuoteDisplay() {
+        quoteBodyEl.innerHTML = '';
+        let subtotal = 0;
+        const discountPercent = parseFloat(priceLevelEl.value) || 0;
+
+        if (quoteItems.length === 0) {
+            quoteBodyEl.innerHTML = `<tr><td colspan="9" class="text-center p-3 text-gray-400 text-xs">Añade productos...</td></tr>`;
+        } else {
+            quoteItems.forEach((item, index) => {
+                const unitPrice = calculateDiscountedPrice(item.precioBase, discountPercent);
+                const itemTotal = unitPrice * item.quantity;
+                subtotal += itemTotal;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="text-center">${index + 1}</td>
+                    <td>${item.clave}</td>
+                    <td class="quote-description" title="${item.descripcion}">${item.descripcion}</td>
+                    <td class="text-center">${item.quantity}</td>
+                    <td class="text-center">${item.unidadMedida}</td>
+                    <td class="text-right">${formatCurrency(unitPrice)}</td>
+                    <td class="text-center">${discountPercent}%</td>
+                    <td class="text-right">${formatCurrency(itemTotal)}</td>
+                    <td class="text-center">
+                        <button class="remove-from-quote-btn text-red-500 hover:text-red-700 font-bold px-1" data-product-id="${item.id}">X</button>
+                    </td>
+                `;
+                quoteBodyEl.appendChild(row);
+            });
+        }
+
+        const iva = subtotal * IVA_RATE;
+        const total = subtotal + iva;
+        quoteSubtotalEl.textContent = formatCurrency(subtotal);
+        quoteIvaEl.textContent = formatCurrency(iva);
+        quoteTotalEl.textContent = formatCurrency(total);
+        const hasItems = quoteItems.length > 0;
+        sendWhatsappBtn.disabled = !hasItems;
+        generatePdfBtn.disabled = !hasItems;
+    }
+
+    function calculateDiscountedPrice(basePrice, discountPercent) {
+        const discount = Number(discountPercent) / 100;
+        return Number(basePrice) * (1 - discount);
+    }
+
+    function formatCurrency(value) {
+        const number = Number(value);
+        if (isNaN(number)) return '$0.00';
+        return number.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return new Date().toLocaleDateString('es-MX');
+        try {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } catch (e) { return new Date().toLocaleDateString('es-MX'); }
+    }
 
     function generatePdf() {
         if (quoteItems.length === 0) return;
-        // Poblar datos generales PDF (igual)
+        // Poblar datos generales PDF
         pdfFolioEl.textContent = folioEl.value || '-';
         pdfQuoteDateEl.textContent = formatDate(quoteDateEl.value);
         pdfReferenciaEl.textContent = referenciaEl.value || '-';
@@ -199,16 +301,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemTotal = unitPrice * item.quantity;
             pdfSubtotal += itemTotal;
             const row = document.createElement('tr');
-            // <<< AJUSTE PDF: Asegura que las celdas tengan borde y padding correctos >>>
+            // <<< PDF: Celdas con estilo inline simple y word-wrap >>>
             row.innerHTML = `
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center;">${index + 1}</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm;">${item.clave}</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; word-wrap: break-word;">${item.descripcion}</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center;">${item.quantity}</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center;">${item.unidadMedida}</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: right;">${formatCurrency(unitPrice)}</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center;">${discountPercent}%</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: right;">${formatCurrency(itemTotal)}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center; font-size: 7pt;">${index + 1}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; font-size: 7pt;">${item.clave}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; word-wrap: break-word; font-size: 7pt;">${item.descripcion}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center; font-size: 7pt;">${item.quantity}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center; font-size: 7pt;">${item.unidadMedida}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: right; font-size: 7pt;">${formatCurrency(unitPrice)}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center; font-size: 7pt;">${discountPercent}%</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: right; font-size: 7pt;">${formatCurrency(itemTotal)}</td>
             `;
             pdfQuoteBodyEl.appendChild(row);
         });
@@ -221,26 +323,60 @@ document.addEventListener('DOMContentLoaded', () => {
         const element = document.getElementById('pdf-template');
         const pdfFilename = `Cotizacion_${(folioEl.value || 'SF').replace(/[^a-zA-Z0-9]/g, '_')}_${(clientNameEl.value || 'Cliente').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
         const opt = {
-            margin: [8, 8, 12, 8], // Aumentar un poco margen
-            filename: pdfFilename, image: { type: 'jpeg', quality: 0.98 },
+            margin: [8, 8, 12, 8], filename: pdfFilename, image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2, useCORS: true, logging: false },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
-        element.classList.remove('hidden'); element.style.display = 'block'; // Mostrar para renderizar
-        console.log("Generando PDF..."); // Log para saber que se intenta
+        element.classList.remove('hidden'); element.style.display = 'block';
+        console.log("Generando PDF...");
         html2pdf().from(element).set(opt).save().then(() => {
-            console.log("PDF generado.");
-            element.style.display = 'none'; element.classList.add('hidden'); // Ocultar de nuevo
+            console.log("PDF generado."); element.style.display = 'none'; element.classList.add('hidden');
         }).catch(err => {
             console.error("Error generando PDF:", err); element.style.display = 'none'; element.classList.add('hidden');
             alert("Error al generar PDF. Revisa la consola (F12).");
         });
     } // Fin generatePdf
 
-    function generateWhatsAppMessage() { /* ... igual ... */ }
-    function sendWhatsApp() { /* ... igual ... */ }
+     function generateWhatsAppMessage() {
+        const client = clientNameEl.value || 'Cliente';
+        const date = formatDate(quoteDateEl.value);
+        const folio = folioEl.value || 'S/F';
+        const ref = referenciaEl.value || 'N/A';
+        const discountLevel = priceLevelEl.options[priceLevelEl.selectedIndex].text;
+        const discountPercent = parseFloat(priceLevelEl.value) || 0;
+        let message = `*COTIZACIÓN TPS*\n\n`;
+        message += `*Folio:* ${folio} | *Fecha:* ${date}\n`;
+        message += `*Cliente:* ${client}\n`;
+        if (referenciaEl.value) message += `*Referencia:* ${ref}\n`;
+        if (operadorEl.value) message += `*Operador:* ${operadorEl.value}\n`;
+        message += `*Nivel Precio:* ${discountLevel}\n\n*Partidas:*\n-------------------------------------\n`;
+        let subtotal = 0;
+        quoteItems.forEach((item, index) => {
+            const unitPrice = calculateDiscountedPrice(item.precioBase, discountPercent);
+            const itemTotal = unitPrice * item.quantity;
+            subtotal += itemTotal;
+            message += `${index + 1}. *${item.clave}* - ${item.descripcion}\n   Cant: ${item.quantity} ${item.unidadMedida} | PU: ${formatCurrency(unitPrice)} | Importe: ${formatCurrency(itemTotal)}\n----\n`;
+        });
+        const iva = subtotal * IVA_RATE;
+        const total = subtotal + iva;
+        message += `-------------------------------------\n*Subtotal:* ${formatCurrency(subtotal)}\n*IVA (16%):* ${formatCurrency(iva)}\n*TOTAL:* *${formatCurrency(total)}*\n\n`;
+        if (comentarioEl.value) message += `*Comentario:* ${comentarioEl.value}\n\n`;
+        message += `_Precios sujetos a cambio. Vigencia 15 días._\nTecnología en Pinturas TPS`;
+        return message;
+    }
 
-    // --- Event Listeners (igual que antes) ---
+    function sendWhatsApp() {
+        if (quoteItems.length === 0) return;
+        let phone = whatsappNumberEl.value.replace(/\D/g, '');
+        if (!phone || phone.length < 10) { alert('Número de WhatsApp inválido (10 dígitos MX).'); whatsappNumberEl.focus(); return; }
+        if (phone.length === 10 && !phone.startsWith('52')) { phone = `52${phone}`; }
+        else if (phone.length === 12 && phone.startsWith('521')) { phone = `52${phone.substring(3)}`; }
+        else if (phone.length !== 12 || !phone.startsWith('52')) { alert('Formato incorrecto. Debe ser 52 + 10 dígitos.'); whatsappNumberEl.focus(); return; }
+        const message = generateWhatsAppMessage();
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    }
+
+    // --- Event Listeners ---
     let filterTimeout;
     filterClaveEl.addEventListener('input', () => { clearTimeout(filterTimeout); filterTimeout = setTimeout(applyFiltersAndDisplay, 300); });
     filterDescripcionEl.addEventListener('input', () => { clearTimeout(filterTimeout); filterTimeout = setTimeout(applyFiltersAndDisplay, 300); });

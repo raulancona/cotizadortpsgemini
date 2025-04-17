@@ -17,13 +17,16 @@
         .sticky-quote { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); }
         #products-body tr:hover, #quote-body tr:hover { background-color: #f0f9ff; }
         th { text-align: left; }
-        td, th { padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; }
+        /* Ajuste padding tabla principal y cotización */
+        #products-body td, #products-body th, #quote-body td, #quote-body th { padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; }
         thead th { background-color: #1e3a8a; color: white; }
-        #quote-body thead th { background-color: #e5e7eb; color: #374151; }
+        #quote-body thead th { background-color: #e5e7eb; color: #374151; font-size: 11px; /* Más pequeño */ }
         .status-loading { color: #4b5563; }
         .status-success { color: #16a34a; }
         .status-warning { color: #f97316; }
         .status-error { color: #dc2626; }
+        /* Estilo específico para la tabla de cotización en pantalla */
+        #quote-body td, #quote-body th { font-size: 11px; padding: 3px 5px; } /* Fuente y padding más pequeños */
     </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-6">
@@ -43,14 +46,14 @@
                     <input id="filter-descripcion" type="text" placeholder="Filtrar por Descripción" class="border p-2 rounded text-sm focus:ring-blue-500 focus:border-blue-500 transition" disabled>
                 </div>
                 <div class="overflow-auto rounded border border-gray-200 max-h-[65vh] relative">
-                    <table class="min-w-full table-auto text-sm">
+                    <table class="min-w-full table-fixed text-sm"> <!-- table-fixed ayuda -->
                         <thead>
-                            <tr>
-                                <th class="px-3 py-2 sticky top-0 z-10">Producto</th>
-                                <th class="px-3 py-2 sticky top-0 z-10">Descripción</th>
-                                <th class="px-3 py-2 text-right sticky top-0 z-10">Precio</th>
-                                <th class="px-3 py-2 text-center w-20 sticky top-0 z-10">Cantidad</th>
-                                <th class="px-3 py-2 text-center w-20 sticky top-0 z-10">Añadir</th>
+                            <tr> <!-- Anchos ajustados -->
+                                <th class="px-3 py-2 sticky top-0 z-10 w-3/12">Producto</th>
+                                <th class="px-3 py-2 sticky top-0 z-10 w-5/12">Descripción</th> <!-- Más espacio -->
+                                <th class="px-3 py-2 text-right sticky top-0 z-10 w-2/12">Precio</th>
+                                <th class="px-3 py-2 text-center w-1/12 sticky top-0 z-10">Cant.</th>
+                                <th class="px-3 py-2 text-center w-1/12 sticky top-0 z-10">Añadir</th>
                             </tr>
                         </thead>
                         <tbody id="products-body" class="divide-y divide-gray-200">
@@ -87,12 +90,12 @@
                         <option value="20">Distribuidor (-20%)</option>
                     </select>
                 </div>
-                <!-- Contenedor de la tabla de cotización con altura ajustada -->
-                <div class="overflow-y-auto flex-grow border rounded border-gray-200 mb-4 min-h-[200px] max-h-[45vh] lg:max-h-[calc(100vh-500px)]">
-                    <table class="min-w-full table-auto text-xs">
-                        <!-- Cabecera de tabla con anchos ajustados -->
-                        <thead class="bg-gray-200 sticky top-0 z-10 text-[11px]">
-                             <tr>
+                <!-- Contenedor de la tabla de cotización con altura MÁS GRANDE -->
+                <div class="overflow-y-auto flex-grow border rounded border-gray-200 mb-4 min-h-[250px] max-h-[55vh] lg:max-h-[calc(100vh-480px)]"> {/* <<< ALTURAS AUMENTADAS */}
+                    <table class="min-w-full table-auto"> {/* Quitamos text-xs aquí para aplicar en CSS */}
+                        {/* Cabecera con anchos ajustados y padding reducido */}
+                       <thead class="bg-gray-200 sticky top-0 z-10">
+                            <tr>
                                 <th class="px-1 py-1 sticky top-0 z-10 w-8">#</th>
                                 <th class="px-1 py-1 sticky top-0 z-10 w-2/12">Producto</th>
                                 <th class="px-1 py-1 sticky top-0 z-10 w-4/12">Desc.</th>
@@ -128,23 +131,23 @@
         </div>
     </div>
 
-    <!-- Plantilla Oculta para el PDF (CORREGIDA Y MEJORADA) -->
+    <!-- Plantilla Oculta para el PDF (MUY SIMPLIFICADA Y CON ESTILOS PARA WRAPPING) -->
     <div id="pdf-template" class="hidden p-4 bg-white text-[9px]" style="width: 210mm; font-family: Arial, sans-serif;">
         <!-- Encabezado PDF -->
-        <table style="width: 100%; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 8px;">
+        <table style="width: 100%; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 6px;">
             <tr>
                 <td style="width: 60%; vertical-align: top;">
-                    <img src="logo-tps.png" alt="" style="height: 45px; margin-bottom: 5px; display: block;" onerror="this.style.display='none';" />
-                    <div style="font-size: 10px; line-height: 1.3;">
+                    <img src="logo-tps.png" alt="" style="height: 40px; margin-bottom: 5px; display: block;" onerror="this.style.display='none';" />
+                    <div style="font-size: 9px; line-height: 1.2;">
                       <span style="font-weight: bold;">Tecnología en Pinturas TPS</span><br>
                       RFC: TPS030405175<br>
-                      <span style="font-size: 9px;">Dirección Ficticia 123, Col. Ejemplo</span><br>
+                      <span style="font-size: 8px;">Dirección Ficticia 123, Col. Ejemplo</span><br>
                       Tel: +52 (999) 156 43 42
                     </div>
                 </td>
                 <td style="width: 40%; text-align: right; vertical-align: top;">
-                    <div style="font-size: 18px; font-weight: bold; color: #1e3a8a; margin-bottom: 5px;">COTIZACIÓN</div>
-                    <div style="font-size: 10px; line-height: 1.4;">
+                    <div style="font-size: 16px; font-weight: bold; color: #1e3a8a; margin-bottom: 4px;">COTIZACIÓN</div>
+                    <div style="font-size: 9px; line-height: 1.3;">
                       <strong>FOLIO:</strong> <span id="pdf-folio">-</span><br>
                       <strong>FECHA:</strong> <span id="pdf-quote-date">-</span><br>
                       <strong>REFERENCIA:</strong> <span id="pdf-referencia">-</span><br>
@@ -155,53 +158,46 @@
         </table>
 
         <!-- Datos Cliente PDF -->
-        <table style="width: 100%; border-collapse: collapse; border: 1px solid #ccc; margin-bottom: 12px; font-size: 9px;">
-            <thead>
-                <tr style="background-color: #f3f4f6;">
-                    <th colspan="2" style="border: 1px solid #ccc; padding: 3px 6px; text-align: left; font-weight: bold;">DATOS DEL CLIENTE</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td style="border: 1px solid #ccc; padding: 2px 6px; width:15%; font-weight: bold;">ATENCIÓN:</td><td style="border: 1px solid #ccc; padding: 2px 6px;"><span id="pdf-client-name">-</span></td></tr>
-                <tr><td style="border: 1px solid #ccc; padding: 2px 6px; font-weight: bold;">WHATSAPP:</td><td style="border: 1px solid #ccc; padding: 2px 6px;"><span id="pdf-client-whatsapp">-</span></td></tr>
-                <tr><td style="border: 1px solid #ccc; padding: 2px 6px; font-weight: bold;">RFC:</td><td style="border: 1px solid #ccc; padding: 2px 6px;"><span id="pdf-client-rfc">-</span></td></tr>
-                <tr><td style="border: 1px solid #ccc; padding: 2px 6px; font-weight: bold;">DIRECCIÓN:</td><td style="border: 1px solid #ccc; padding: 2px 6px;"><span id="pdf-client-dir">-</span></td></tr>
-            </tbody>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 8px;">
+             <tr><td style="padding: 1px 0; width:15%; font-weight: bold;">ATENCIÓN:</td><td style="padding: 1px 0;"><span id="pdf-client-name">-</span></td></tr>
+             <tr><td style="padding: 1px 0; font-weight: bold;">WHATSAPP:</td><td style="padding: 1px 0;"><span id="pdf-client-whatsapp">-</span></td></tr>
+             <tr><td style="padding: 1px 0; font-weight: bold;">RFC:</td><td style="padding: 1px 0;"><span id="pdf-client-rfc">-</span></td></tr>
+             <tr><td style="padding: 1px 0; font-weight: bold;">DIRECCIÓN:</td><td style="padding: 1px 0;"><span id="pdf-client-dir">-</span></td></tr>
         </table>
 
         <!-- Comentario PDF -->
-        <div style="margin-bottom: 12px; font-size: 9px; border: 1px solid #eee; padding: 4px 6px;">
+        <div style="margin-bottom: 10px; font-size: 8px; padding: 2px 0;">
           <strong style="margin-right: 5px;">COMENTARIO:</strong><span id="pdf-comentario" style="font-style: italic;">-</span>
         </div>
 
-        <!-- Tabla Productos PDF -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 8px;">
-            <thead style="background-color: #e5e7eb; color: #111827;"> <!-- Fondo gris claro, texto oscuro -->
-                <tr> <!-- Anchos ajustados para mejor distribución -->
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: center; width: 5%;">#</th>
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: left; width: 15%;">Producto</th>
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: left; width: 33%;">Descripción</th> <!-- Más espacio -->
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: center; width: 7%;">Cant</th>
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: center; width: 7%;">UM</th>
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: right; width: 12%;">P. Unit</th>
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: center; width: 8%;">%Desc</th>
-                    <th style="border: 1px solid #ccc; padding: 4px 2px; text-align: right; width: 13%;">Importe</th>
+        <!-- Tabla Productos PDF (Simplificada) -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 7.5px;"> <!-- Fuente más pequeña -->
+            <thead style="background-color: #eee; color: #000; font-weight: bold;">
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: center; width: 4%;">#</th>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: left; width: 14%;">Producto</th>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: left; width: 38%;">Descripción</th>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: center; width: 6%;">Cant</th>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: center; width: 6%;">UM</th>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: right; width: 11%;">P. Unit</th>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: center; width: 8%;">%Desc</th>
+                    <th style="border: 1px solid #ddd; padding: 2px; text-align: right; width: 13%;">Importe</th>
                 </tr>
             </thead>
             <tbody id="pdf-quote-body">
-                <!-- Filas generadas por JS: Ejemplo de cómo se vería una fila -->
-                <!--
+                <!-- Filas generadas por JS -->
+                <!-- Ejemplo:
                 <tr>
-                    <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">1</td>
-                    <td style="border: 1px solid #ccc; padding: 2px;">10001</td>
-                    <td style="border: 1px solid #ccc; padding: 2px;">ESPONJA ABRASIVA GRADO MUY FINO (CAJA) P20</td>
-                    <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">6</td>
-                    <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">PZA</td>
-                    <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">$1,026.40</td>
-                    <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">0%</td>
-                    <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">$6,158.40</td>
+                    <td style="border: 1px solid #ddd; padding: 2px; text-align: center;">1</td>
+                    <td style="border: 1px solid #ddd; padding: 2px;">10001</td>
+                    <td style="border: 1px solid #ddd; padding: 2px; word-break: break-word;">ESPONJA ABRASIVA GRADO MUY FINO (CAJA) P20 CON UNA DESCRIPCION EXTREMADAMENTE LARGA PARA PROBAR EL SALTO DE LINEA</td>
+                    <td style="border: 1px solid #ddd; padding: 2px; text-align: center;">6</td>
+                    <td style="border: 1px solid #ddd; padding: 2px; text-align: center;">PZA</td>
+                    <td style="border: 1px solid #ddd; padding: 2px; text-align: right;">$1,026.40</td>
+                    <td style="border: 1px solid #ddd; padding: 2px; text-align: center;">0%</td>
+                    <td style="border: 1px solid #ddd; padding: 2px; text-align: right;">$6,158.40</td>
                 </tr>
-                -->
+                 -->
             </tbody>
         </table>
 
@@ -209,10 +205,10 @@
         <table style="width: 100%; margin-top: 15px;">
           <tr>
               <td style="width: 65%; vertical-align: bottom; padding-right: 10px;">
-                   <div style="font-size: 8px; border: 1px solid #ccc; padding: 5px; background-color: #f9fafb; line-height: 1.3;">
-                      <strong>Condiciones:</strong><br>
-                      - Precios sujetos a cambio sin previo aviso.<br>
-                      - Precios en Moneda Nacional (MXN). IVA incluido donde aplique.<br>
+                   <div style="font-size: 7px; border: 1px solid #eee; padding: 4px; background-color: #f9fafb; line-height: 1.2;">
+                      <strong>Condiciones:</strong>
+                      - Precios sujetos a cambio sin previo aviso.
+                      - Precios en Moneda Nacional (MXN). IVA incluido donde aplique.
                       - Vigencia de la cotización: 15 días.
                    </div>
               </td>
@@ -228,9 +224,7 @@
               </td>
           </tr>
         </table>
-
-         <!-- Pie de Página PDF -->
-         <div style="text-align: center; font-size: 8px; margin-top: 20px; padding-top: 5px; border-top: 1px solid #eee; color: #666;">
+         <div style="text-align: center; font-size: 7px; margin-top: 15px; padding-top: 4px; border-top: 1px solid #eee; color: #777;">
               Tecnología en Pinturas TPS - ¡Gracias por su preferencia!
          </div>
     </div>

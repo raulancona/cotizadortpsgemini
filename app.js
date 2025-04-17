@@ -53,7 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadProducts() {
         try {
             loadingStatusEl.textContent = 'Cargando productos desde GitHub...';
-            loadingStatusEl.className = 'status-loading'; /*...*/
+            loadingStatusEl.className = 'status-loading'; productCountInfoEl.textContent = '';
+            filterClaveEl.disabled = true; filterDescripcionEl.disabled = true;
+            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-gray-500">Cargando...</td></tr>`;
 
             const urlWithTimestamp = `${CSV_URL}?t=${new Date().getTime()}`;
             const response = await fetch(urlWithTimestamp);
@@ -61,12 +63,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const csvText = await response.text();
 
             Papa.parse(csvText, {
-                header: true, // Usamos encabezados
-                skipEmptyLines: 'greedy',
-                encoding: "UTF-8",
+                header: true, skipEmptyLines: 'greedy', encoding: "UTF-8",
                 transformHeader: header => header.trim(),
                 complete: (results) => {
-                    if (results.errors.length > 0) { /*...*/ }
+                    if (results.errors.length > 0) {
+                        console.warn("Errores de parseo:", results.errors);
+                        loadingStatusEl.textContent = `Error al procesar CSV. Revise formato.`;
+                        loadingStatusEl.className = 'status-error'; return;
+                    }
+                    console.log("Resultados de PapaParse:", results);
 
                     productMap.clear();
                     allProducts = results.data.map((p, index) => {
@@ -77,34 +82,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         const precioStrClean = precioStrRaw.replace(/[$,\s]/g, '').replace(/,/g, '');
                         const precio = parseFloat(precioStrClean);
                         const internalId = `item-${index}-${clave || Math.random().toString(16).slice(2)}`;
-                        const isClaveValid = !!clave; const isDescValid = !!descripcion;
-                        const isPrecioValid = !isNaN(precio) && precio >= 0;
+                        const isClaveValid = !!clave; const isDescValid = !!descripcion; const isPrecioValid = !isNaN(precio) && precio >= 0;
 
                         if (isClaveValid && isDescValid && isPrecioValid) {
-                            const productData = {
-                                clave: clave, descripcion: descripcion, precioBase: precio,
-                                unidadMedida: unidadMedida, id: internalId
-                            };
+                            const productData = { clave, descripcion, precioBase: precio, unidadMedida, id: internalId };
                             productMap.set(internalId, productData);
                             return productData;
                         }
                         console.warn(` Fila ${index + 2} IGNORADA. Datos:`, p); return null;
                     }).filter(p => p !== null);
 
-                    if (allProducts.length === 0) { /*...*/ } // Manejo error
-                    else {
+                    if (allProducts.length === 0) {
+                         loadingStatusEl.textContent = `Error: No se cargaron productos válidos.`;
+                         loadingStatusEl.className = 'status-warning';
+                         productCountInfoEl.textContent = `(0 productos - Revisa CSV/Consola)`;
+                         productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-orange-600">No se pudo procesar ningún producto válido. Revisa la consola (F12) y el formato/contenido del CSV.</td></tr>`;
+                    } else {
                         loadingStatusEl.textContent = `Productos cargados:`;
                         loadingStatusEl.className = 'status-success';
                         productCountInfoEl.textContent = `(${allProducts.length})`;
                         filterClaveEl.disabled = false; filterDescripcionEl.disabled = false;
                         applyFiltersAndDisplay();
                     }
-                }, error: (error) => { /*...*/ } // Manejo error
+                },
+                error: (error) => { /* ... */ }
             });
-        } catch (error) { /*...*/ } // Manejo error
+        } catch (error) { /* ... */ }
     }
 
-    function applyFiltersAndDisplay() { /* ... Sin cambios ... */
+    function applyFiltersAndDisplay() {
         const filterClave = filterClaveEl.value.toUpperCase().trim();
         const filterDescripcion = filterDescripcionEl.value.toUpperCase().trim();
         filteredProducts = allProducts.filter(p =>
@@ -115,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         displayCatalogPage();
     }
 
-    function displayCatalogPage() { /* ... Corrección del precio aquí ... */
+    function displayCatalogPage() {
         productsBodyEl.innerHTML = '';
         const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -123,19 +129,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const pageProducts = filteredProducts.slice(startIndex, endIndex);
 
         if (pageProducts.length === 0) {
-            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-gray-500">No se encontraron productos con esos filtros.</td></tr>`;
+            productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-gray-500">No se encontraron productos.</td></tr>`;
         } else {
             pageProducts.forEach(product => {
                 const row = document.createElement('tr');
+                // CORREGIDO: Asegura mostrar el precio correctamente
                 row.innerHTML = `
                     <td class="align-top">${product.clave}</td>
                     <td class="align-top">${product.descripcion}</td>
-                    <td class="text-right align-top">${formatCurrency(product.precioBase)}</td> {/* CORREGIDO: Solo precio */}
+                    <td class="text-right align-top">${formatCurrency(product.precioBase)}</td>
                     <td class="text-center align-top">
                         <input type="number" min="1" value="1" class="w-16 border rounded px-1 py-0.5 text-center text-sm product-quantity" data-product-id="${product.id}">
                     </td>
                     <td class="text-center align-top">
-                        <button class="add-to-quote-btn bg-blue-500 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition" data-product-id="${product.id}">+</button>
+                        <button class="btn btn-primary btn-icon add-to-quote-btn" data-product-id="${product.id}">+</button>
                     </td>
                 `;
                 productsBodyEl.appendChild(row);
@@ -144,17 +151,95 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePagination(totalPages);
     }
 
-    function updatePagination(totalPages) { /* ... Sin cambios ... */ }
-    function changePage(direction) { /* ... Sin cambios ... */ }
-    function addToQuote(productId, quantity) { /* ... Sin cambios ... */ }
-    function removeFromQuote(productId) { /* ... Sin cambios ... */ }
-    function updateQuoteDisplay() { /* ... Sin cambios ... */ }
-    function calculateDiscountedPrice(basePrice, discountPercent) { /* ... Sin cambios ... */ }
-    function formatCurrency(value) { /* ... Sin cambios ... */ }
-    function formatDate(dateString) { /* ... Sin cambios ... */ }
+    function updatePagination(totalPages) {
+        pageInfoEl.textContent = `Página ${currentPage} / ${totalPages > 0 ? totalPages : 1}`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    }
 
-    function generatePdf() { // Ajustado para la nueva plantilla PDF
+    function changePage(direction) {
+        const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+        if (direction === 'next' && currentPage < totalPages) { currentPage++; }
+        else if (direction === 'prev' && currentPage > 1) { currentPage--; }
+        displayCatalogPage();
+    }
+
+    function addToQuote(productId, quantity) {
+        const product = productMap.get(productId);
+        if (!product || quantity <= 0) return;
+        const existingItem = quoteItems.find(item => item.id === productId);
+        if (existingItem) { existingItem.quantity += quantity; }
+        else { quoteItems.push({ ...product, quantity: quantity }); }
+        updateQuoteDisplay();
+    }
+
+    function removeFromQuote(productId) {
+        quoteItems = quoteItems.filter(item => item.id !== productId);
+        updateQuoteDisplay();
+    }
+
+    function updateQuoteDisplay() {
+        quoteBodyEl.innerHTML = '';
+        let subtotal = 0;
+        const discountPercent = parseFloat(priceLevelEl.value) || 0;
+
+        if (quoteItems.length === 0) {
+            quoteBodyEl.innerHTML = `<tr><td colspan="9" class="text-center p-4 text-gray-400 text-xs">Añade productos...</td></tr>`;
+        } else {
+            quoteItems.forEach((item, index) => {
+                const unitPrice = calculateDiscountedPrice(item.precioBase, discountPercent);
+                const itemTotal = unitPrice * item.quantity;
+                subtotal += itemTotal;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="text-center">${index + 1}</td>
+                    <td>${item.clave}</td>
+                    <td class="quote-description-cell" title="${item.descripcion}">${item.descripcion}</td>
+                    <td class="text-center">${item.quantity}</td>
+                    <td class="text-center">${item.unidadMedida}</td>
+                    <td class="text-right">${formatCurrency(unitPrice)}</td>
+                    <td class="text-center">${discountPercent}%</td>
+                    <td class="text-right">${formatCurrency(itemTotal)}</td>
+                    <td class="text-center">
+                        <button class="remove-from-quote-btn text-red-500 hover:text-red-700 font-semibold px-1 text-xs" data-product-id="${item.id}">X</button>
+                    </td>
+                `;
+                quoteBodyEl.appendChild(row);
+            });
+        }
+
+        const iva = subtotal * IVA_RATE;
+        const total = subtotal + iva;
+        quoteSubtotalEl.textContent = formatCurrency(subtotal);
+        quoteIvaEl.textContent = formatCurrency(iva);
+        quoteTotalEl.textContent = formatCurrency(total);
+        const hasItems = quoteItems.length > 0;
+        sendWhatsappBtn.disabled = !hasItems;
+        generatePdfBtn.disabled = !hasItems;
+    }
+
+    function calculateDiscountedPrice(basePrice, discountPercent) {
+        const discount = Number(discountPercent) / 100;
+        return Number(basePrice) * (1 - discount);
+    }
+
+    function formatCurrency(value) {
+        const number = Number(value);
+        if (isNaN(number)) return '$0.00';
+        return number.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return new Date().toLocaleDateString('es-MX');
+        try {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } catch (e) { return new Date().toLocaleDateString('es-MX'); }
+    }
+
+    function generatePdf() {
         if (quoteItems.length === 0) return;
+        // Poblar datos generales PDF
         pdfFolioEl.textContent = folioEl.value || '-';
         pdfQuoteDateEl.textContent = formatDate(quoteDateEl.value);
         pdfReferenciaEl.textContent = referenciaEl.value || '-';
@@ -164,9 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfClientRfcEl.textContent = clientRfcEl.value || 'XAXX010101000';
         pdfClientDirEl.textContent = clientDirEl.value || '-';
         pdfComentarioEl.textContent = comentarioEl.value || '-';
-        pdfQuoteBodyEl.innerHTML = '';
+
+        pdfQuoteBodyEl.innerHTML = ''; // Limpiar tabla PDF
         let pdfSubtotal = 0;
         const discountPercent = parseFloat(priceLevelEl.value) || 0;
+
         quoteItems.forEach((item, index) => {
             const unitPrice = calculateDiscountedPrice(item.precioBase, discountPercent);
             const itemTotal = unitPrice * item.quantity;
@@ -176,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `
                 <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center;">${index + 1}</td>
                 <td style="border: 0.5pt solid #ccc; padding: 1mm;">${item.clave}</td>
-                <td style="border: 0.5pt solid #ccc; padding: 1mm; word-wrap: break-word;">${item.descripcion}</td>
+                <td style="border: 0.5pt solid #ccc; padding: 1mm; word-wrap: break-word;">${item.descripcion}</td> {/* Forzar salto */}
                 <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center;">${item.quantity}</td>
                 <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: center;">${item.unidadMedida}</td>
                 <td style="border: 0.5pt solid #ccc; padding: 1mm; text-align: right;">${formatCurrency(unitPrice)}</td>
@@ -205,12 +292,47 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error PDF:", err); element.style.display = 'none'; element.classList.add('hidden');
             alert("Error al generar PDF. Revisa la consola (F12).");
         });
+    } // Fin generatePdf
+
+     function generateWhatsAppMessage() {
+        const client = clientNameEl.value || 'Cliente';
+        const date = formatDate(quoteDateEl.value);
+        const folio = folioEl.value || 'S/F';
+        const ref = referenciaEl.value || 'N/A';
+        const discountLevel = priceLevelEl.options[priceLevelEl.selectedIndex].text;
+        const discountPercent = parseFloat(priceLevelEl.value) || 0;
+        let message = `*COTIZACIÓN TPS*\n\n`;
+        message += `*Folio:* ${folio} | *Fecha:* ${date}\n*Cliente:* ${client}\n`;
+        if (referenciaEl.value) message += `*Referencia:* ${ref}\n`;
+        if (operadorEl.value) message += `*Operador:* ${operadorEl.value}\n`;
+        message += `*Nivel Precio:* ${discountLevel}\n\n*Partidas:*\n-------------------------------------\n`;
+        let subtotal = 0;
+        quoteItems.forEach((item, index) => {
+            const unitPrice = calculateDiscountedPrice(item.precioBase, discountPercent);
+            const itemTotal = unitPrice * item.quantity;
+            subtotal += itemTotal;
+            message += `${index + 1}. *${item.clave}* - ${item.descripcion}\n   Cant: ${item.quantity} ${item.unidadMedida} | PU: ${formatCurrency(unitPrice)} | Importe: ${formatCurrency(itemTotal)}\n----\n`;
+        });
+        const iva = subtotal * IVA_RATE;
+        const total = subtotal + iva;
+        message += `-------------------------------------\n*Subtotal:* ${formatCurrency(subtotal)}\n*IVA (16%):* ${formatCurrency(iva)}\n*TOTAL:* *${formatCurrency(total)}*\n\n`;
+        if (comentarioEl.value) message += `*Comentario:* ${comentarioEl.value}\n\n`;
+        message += `_Precios sujetos a cambio. Vigencia 15 días._\nTecnología en Pinturas TPS`;
+        return message;
     }
 
-     function generateWhatsAppMessage() { /* ... Sin cambios ... */ }
-     function sendWhatsApp() { /* ... Sin cambios ... */ }
+    function sendWhatsApp() {
+        if (quoteItems.length === 0) return;
+        let phone = whatsappNumberEl.value.replace(/\D/g, '');
+        if (!phone || phone.length < 10) { alert('Número de WhatsApp inválido (10 dígitos MX).'); whatsappNumberEl.focus(); return; }
+        if (phone.length === 10 && !phone.startsWith('52')) { phone = `52${phone}`; }
+        else if (phone.length === 12 && phone.startsWith('521')) { phone = `52${phone.substring(3)}`; }
+        else if (phone.length !== 12 || !phone.startsWith('52')) { alert('Formato incorrecto. Debe ser 52 + 10 dígitos.'); whatsappNumberEl.focus(); return; }
+        const message = generateWhatsAppMessage();
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
+    }
 
-    // --- Event Listeners (Sin cambios) ---
+    // --- Event Listeners ---
     let filterTimeout;
     filterClaveEl.addEventListener('input', () => { clearTimeout(filterTimeout); filterTimeout = setTimeout(applyFiltersAndDisplay, 300); });
     filterDescripcionEl.addEventListener('input', () => { clearTimeout(filterTimeout); filterTimeout = setTimeout(applyFiltersAndDisplay, 300); });
@@ -224,11 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isNaN(quantity) && quantity > 0) {
                 addToQuote(productId, quantity);
                 button.textContent = '✓'; button.classList.remove('bg-blue-500', 'hover:bg-blue-700');
-                button.classList.add('bg-green-500', 'cursor-default'); button.disabled = true;
-                setTimeout(() => {
+                button.classList.add('btn-add-feedback', 'cursor-default'); button.disabled = true; // Feedback visual y deshabilita
+                setTimeout(() => { // Habilita después de un tiempo
                     button.textContent = '+'; button.classList.add('bg-blue-500', 'hover:bg-blue-700');
-                    button.classList.remove('bg-green-500', 'cursor-default'); button.disabled = false;
-                }, 800);
+                    button.classList.remove('btn-add-feedback', 'cursor-default'); button.disabled = false;
+                }, 600); // Tiempo reducido
                 quantityInput.value = 1;
             } else { alert("Cantidad inválida."); quantityInput.focus(); }
         }

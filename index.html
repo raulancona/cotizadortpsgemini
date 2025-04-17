@@ -1,137 +1,119 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotizador TPS - Géminis v2</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PapaParse (CSV) & html2pdf -->
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Google Fonts & Estilos Propios -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cotizador TPS</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PapaParse & html2pdf -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.2/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="p-4 md:p-6">
+<body class="bg-gray-100 text-gray-800 font-sans leading-relaxed p-4">
 
-    <main class="grid grid-cols-1 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
+  <div class="max-w-7xl mx-auto grid lg:grid-cols-5 gap-6">
 
-        <!-- Columna Catálogo -->
-        <section class="lg:col-span-3 bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col">
-            <h1 class="text-xl font-semibold mb-4 text-gray-800 flex-shrink-0">Catálogo de Productos</h1>
-            <div class="mb-4 text-sm flex items-center space-x-2 flex-shrink-0">
-                <span id="loading-status" class="status-loading">Cargando...</span>
-                <span id="product-count-info" class="text-gray-500"></span>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 flex-shrink-0">
-                <input id="filter-clave" type="text" placeholder="Buscar Clave / Producto" class="border p-2 rounded-md text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition" disabled>
-                <input id="filter-descripcion" type="text" placeholder="Buscar Descripción" class="border p-2 rounded-md text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition" disabled>
-            </div>
-            <!-- Contenedor de tabla con scroll -->
-            <div class="overflow-auto rounded-md border border-gray-200 flex-grow min-h-[300px]">
-                <table id="products-table" class="w-full table-ui table-fixed">
-                    <thead>
-                        <tr>
-                            <th class="sticky top-0 z-10 w-[20%]">Producto</th>
-                            <th class="sticky top-0 z-10 w-[45%]">Descripción</th>
-                            <th class="sticky top-0 z-10 w-[15%] text-right">Precio</th>
-                            <th class="sticky top-0 z-10 w-[10%] text-center">Cant.</th>
-                            <th class="sticky top-0 z-10 w-[10%] text-center">Añadir</th>
-                        </tr>
-                    </thead>
-                    <tbody id="products-body">
-                        <tr><td colspan="5" class="text-center p-6 text-gray-400 text-sm">Cargando productos...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-4 flex justify-center items-center space-x-2 text-xs flex-shrink-0">
-                <button id="prev-page" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed transition" disabled>&lt;</button>
-                <span id="page-info" class="text-gray-600 px-2">Página 1 / 1</span>
-                <button id="next-page" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed transition" disabled>&gt;</button>
-            </div>
-        </section>
+    <!-- Catálogo -->
+    <section class="lg:col-span-3 bg-white shadow rounded-lg p-6 flex flex-col">
+      <h1 class="text-2xl font-semibold mb-4 text-primary">Catálogo de Productos</h1>
+      <div class="flex items-center mb-4 space-x-2 text-sm">
+        <span id="loading-status" class="status-loading">Cargando...</span>
+        <span id="product-count-info"></span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <input id="filter-clave" type="text" placeholder="Buscar Clave / Producto"
+               class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary text-sm" disabled>
+        <input id="filter-descripcion" type="text" placeholder="Buscar Descripción"
+               class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary text-sm" disabled>
+      </div>
+      <div class="overflow-auto border rounded-lg flex-grow">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-primary text-white">
+              <th class="px-4 py-2 text-sm">Producto</th>
+              <th class="px-4 py-2 text-sm">Descripción</th>
+              <th class="px-4 py-2 text-sm text-right">Precio</th>
+              <th class="px-4 py-2 text-sm text-center">Cant.</th>
+              <th class="px-4 py-2 text-sm text-center">Añadir</th>
+            </tr>
+          </thead>
+          <tbody id="products-body" class="text-sm">
+            <tr><td colspan="5" class="p-6 text-center text-gray-400">Cargando productos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex justify-center items-center space-x-3 text-sm">
+        <button id="prev-page" class="btn btn-outline" disabled>&lt;</button>
+        <span id="page-info">Página 1 / 1</span>
+        <button id="next-page" class="btn btn-outline" disabled>&gt;</button>
+      </div>
+    </section>
 
-        <!-- Columna Cotización -->
-        <aside class="lg:col-span-2 bg-white p-5 rounded-lg shadow-sm border border-gray-100 lg:sticky-quote-container">
-            <h2 class="text-xl font-semibold mb-4 text-gray-800 flex-shrink-0">Resumen de Cotización</h2>
+    <!-- Cotización -->
+    <aside class="lg:col-span-2 bg-white shadow rounded-lg p-6 flex flex-col">
+      <h2 class="text-2xl font-semibold mb-4 text-primary">Resumen de Cotización</h2>
+      <div class="space-y-4 flex-grow overflow-y-auto pr-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+          <input id="client-name" placeholder="Nombre del cliente" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+          <input id="quote-date" type="date" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+          <input id="whatsapp-number" placeholder="WhatsApp (Ej: 529991234567)" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+          <input id="folio" placeholder="Folio (Opc)" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+          <input id="referencia" placeholder="Referencia (Opc)" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+          <input id="operador" placeholder="Operador (Opc)" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+          <input id="client-rfc" placeholder="RFC Cliente (Opc)" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+          <input id="client-dir" placeholder="Dirección (Opc)" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary">
+        </div>
+        <textarea id="comentario" rows="2" placeholder="Comentario (Opcional)"
+                  class="border rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary w-full"></textarea>
+        <div class="text-sm">
+          <label for="price-level" class="font-medium">Nivel de precio:</label>
+          <select id="price-level" class="border rounded-lg h-10 px-3 focus:ring-primary focus:border-primary text-sm">
+            <option value="0">Público (0%)</option>
+            <option value="15">Sub-distribuidor (-15%)</option>
+            <option value="20">Distribuidor (-20%)</option>
+          </select>
+        </div>
+        <div class="border rounded-lg min-h-[150px] overflow-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-200">
+              <tr>
+                <th class="px-2 py-1 w-6">#</th>
+                <th class="px-2 py-1 w-20">Producto</th>
+                <th class="px-2 py-1">Desc.</th>
+                <th class="px-2 py-1 w-12 text-center">Cant</th>
+                <th class="px-2 py-1 w-12 text-center">UM</th>
+                <th class="px-2 py-1 w-20 text-right">P. Unit</th>
+                <th class="px-2 py-1 w-12 text-center">Desc</th>
+                <th class="px-2 py-1 w-24 text-right">Importe</th>
+                <th class="px-2 py-1 w-6 text-center">×</th>
+              </tr>
+            </thead>
+            <tbody id="quote-body">
+              <tr><td colspan="9" class="p-4 text-center text-gray-400">Añade productos…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="mt-4 pt-4 border-t space-y-2 text-right text-sm font-semibold">
+        <div>Subtotal: <span id="quote-subtotal" class="font-normal">$0.00</span></div>
+        <div>IVA (16%): <span id="quote-iva" class="font-normal">$0.00</span></div>
+        <div class="text-lg font-bold">Total: <span id="quote-total">$0.00</span></div>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <button id="send-whatsapp" class="btn btn-success flex-1" disabled>WhatsApp</button>
+        <button id="generate-pdf" class="btn btn-primary flex-1" disabled>Generar PDF</button>
+      </div>
+    </aside>
 
-            <!-- Contenido scrollable -->
-            <div class="flex-grow overflow-y-auto mb-4 pr-2 space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <input id="client-name" type="text" placeholder="Nombre del cliente" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                    <input id="quote-date" type="date" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                    <input id="whatsapp-number" type="tel" placeholder="WhatsApp (Ej: 529991234567)" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                    <input id="folio" type="text" placeholder="Folio (Opc)" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                    <input id="referencia" type="text" placeholder="Referencia (Opc)" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                    <input id="operador" type="text" placeholder="Operador (Opc)" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                    <input id="client-rfc" type="text" placeholder="RFC Cliente (Opc)" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                    <input id="client-dir" type="text" placeholder="Dirección (Opc)" class="border p-2 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <textarea id="comentario" rows="2" placeholder="Comentario (Opcional)" class="border p-2 rounded-md text-xs w-full focus:ring-1 focus:ring-blue-500 focus:border-blue-500"></textarea>
-                <div class="text-xs">
-                    <label for="price-level" class="font-medium mr-2 text-gray-600">Nivel de precio:</label>
-                    <select id="price-level" class="border p-2 rounded-md text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="0">Público (0%)</option>
-                        <option value="15">Sub-distribuidor (-15%)</option>
-                        <option value="20">Distribuidor (-20%)</option>
-                    </select>
-                </div>
-                <div class="border rounded-md border-gray-200 min-h-[150px]">
-                    <table id="quote-table" class="w-full table-fixed">
-                        <thead>
-                            <tr>
-                                <th class="w-[4%]">#</th>
-                                <th class="w-[18%]">Producto</th>
-                                <th class="w-[34%]">Desc.</th>
-                                <th class="w-[7%] text-center">Cant</th>
-                                <th class="w-[7%] text-center">UM</th>
-                                <th class="w-[12%] text-right">P. Unit</th>
-                                <th class="w-[7%] text-center">Desc</th>
-                                <th class="w-[12%] text-right">Importe</th>
-                                <th class="w-[4%] text-center">X</th>
-                            </tr>
-                        </thead>
-                        <tbody id="quote-body">
-                            <tr><td colspan="9" class="text-center p-4 text-gray-400 text-xs">Añade productos...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <!-- Fin Contenido Scrollable -->
+  </div>
 
-            <!-- Totales y Botones (Fijos abajo) -->
-            <div class="mt-auto pt-4 border-t border-gray-200 flex-shrink-0">
-                <div class="mb-4 text-right font-semibold text-gray-700 space-y-1 text-sm">
-                    <div>Subtotal: <span id="quote-subtotal" class="font-normal text-gray-900">$0.00</span></div>
-                    <div>IVA (16%): <span id="quote-iva" class="font-normal text-gray-900">$0.00</span></div>
-                    <div class="text-lg font-bold border-t pt-2 mt-2 text-gray-900">Total: <span id="quote-total">$0.00</span></div>
-                </div>
-                <div class="flex space-x-3">
-                    <button id="send-whatsapp" class="btn btn-success flex-1 text-xs" disabled>
-                        <!-- ícono WhatsApp -->
-                        <svg class="h-4 w-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.675 9.126a5.01 5.01 0 00-1.41-.136h-.02a4.993 4.993 0 00-4.79 3.937 7.5 7.5 0 00-.004 1.958A7.497 7.497 0 009.97 17.5c.16 0 .318-.007.474-.021a4.99 4.99 0 004.736-5.148 4.99 4.99 0 00-4.505-3.205zM4.842 11.708a3.006 3.006 0 013.657-2.866 2.998 2.998 0 012.842 3.136.5.5 0 11-.996.088 1.998 1.998 0 00-1.903-2.088 2.004 2.004 0 00-2.14 1.873.5.5 0 01-.988-.146zm10.918 1.876a7.5 7.5 0 10-11.519 6.916l-.45 1.801a.5.5 0 00.63.63l1.8-.45a7.5 7.5 0 008.539-8.9z"/></svg>
-                        WhatsApp
-                    </button>
-                    <button id="generate-pdf" class="btn btn-primary flex-1 text-xs" disabled>
-                        <!-- ícono PDF -->
-                        <svg class="h-4 w-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
-                        Generar PDF
-                    </button>
-                </div>
-            </div>
-        </aside>
+  <!-- Plantilla PDF -->
+  <div id="pdf-template" class="hidden">
+    <!-- tu HTML del PDF (idéntico a antes, con los mismos IDs) -->
+  </div>
 
-    </main>
-
-    <!-- Plantilla PDF (Simplificada v2) -->
-    <div id="pdf-template" class="hidden" style="padding: 10mm; font-family: Arial, sans-serif; font-size: 8pt; line-height: 1.2;">
-        <!-- ... el contenido de tu plantilla PDF permanece igual ... -->
-        <!-- Asegúrate de conservar los mismos IDs que en tu JS -->
-    </div>
-
-    <script src="app.js" defer></script>
+  <script src="app.js" defer></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuración ---
-    // <<< ¡ASEGÚRATE QUE ESTA URL SEA LA CORRECTA DE TU ARCHIVO RAW EN GITHUB! >>>
-    const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/refs/heads/main/Lista%20estandar%20Raul.csv'; // URL GitHub RAW
+    // <<< ¡CONFIRMA QUE ESTA ES LA URL RAW CORRECTA DE TU CSV EN GITHUB! >>>
+    const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/main/Lista%20estandar%20Raul.csv'; // URL GitHub RAW
     const ITEMS_PER_PAGE = 20;
     const IVA_RATE = 0.16;
 
@@ -63,9 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
             filterDescripcionEl.disabled = true;
             productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-gray-500">Cargando...</td></tr>`;
 
-            // Añadir timestamp para evitar caché agresivo
-            const urlWithTimestamp = `${CSV_URL}?t=${new Date().getTime()}`;
-            const response = await fetch(urlWithTimestamp); // Fetch desde GitHub
+            const urlWithTimestamp = `${CSV_URL}?t=${new Date().getTime()}`; // Evita caché
+            const response = await fetch(urlWithTimestamp);
             if (!response.ok) throw new Error(`Error HTTP ${response.status} al cargar CSV desde GitHub.`);
             const csvText = await response.text();
 
@@ -111,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 productMap.set(internalId, productData);
                                 return productData;
                             }
-                            console.warn(`   -> Fila ${index + 2} IGNORADA. Datos:`, row);
+                            console.warn(`   -> Fila ${index + 2} IGNORADA (Clave: ${!!clave}, Desc: ${!!descripcion}, Precio Válido: ${!isNaN(precio) && precio >= 0}) Datos:`, row);
                             return null;
                         })
                         .filter(p => p !== null);
@@ -120,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         loadingStatusEl.textContent = `Error: No se cargaron productos válidos.`;
                         loadingStatusEl.className = 'status-warning';
                         productCountInfoEl.textContent = `(0 productos - Revisa datos CSV)`;
-                        productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-orange-600">No se pudo procesar ningún producto válido. Verifica el contenido y formato del archivo CSV.</td></tr>`;
+                        productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-orange-600">No se pudo procesar ningún producto válido. Verifica que las columnas Clave, Descripcion y PrecioPublico tengan datos correctos en tu archivo CSV.</td></tr>`;
                     } else {
                         loadingStatusEl.textContent = `Productos cargados:`;
                         loadingStatusEl.className = 'status-success';
@@ -146,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } // Fin loadProducts
 
-    // --- Resto de funciones (igual que antes) ---
+    // --- Resto de funciones (sin cambios) ---
     function applyFiltersAndDisplay() {
         const filterClave = filterClaveEl.value.toUpperCase().trim();
         const filterDescripcion = filterDescripcionEl.value.toUpperCase().trim();
@@ -299,22 +298,22 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfSubtotal += itemTotal;
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="border border-gray-300 px-1 py-0.5 text-center">${index + 1}</td>
-                <td class="border border-gray-300 px-1 py-0.5">${item.clave}</td>
-                <td class="border border-gray-300 px-1 py-0.5">${item.descripcion}</td>
-                <td class="border border-gray-300 px-1 py-0.5 text-center">${item.quantity}</td>
-                <td class="border border-gray-300 px-1 py-0.5 text-center">${item.unidadMedida}</td>
-                <td class="border border-gray-300 px-1 py-0.5 text-right">${formatCurrency(unitPrice)}</td>
-                <td class="border border-gray-300 px-1 py-0.5 text-center">${discountPercent}%</td>
-                <td class="border border-gray-300 px-1 py-0.5 text-right">${formatCurrency(itemTotal)}</td>
+                <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${index + 1}</td>
+                <td style="border: 1px solid #ccc; padding: 2px;">${item.clave}</td>
+                <td style="border: 1px solid #ccc; padding: 2px;">${item.descripcion}</td>
+                <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${item.quantity}</td>
+                <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${item.unidadMedida}</td>
+                <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">${formatCurrency(unitPrice).replace('MXN','')}</td>
+                <td style="border: 1px solid #ccc; padding: 2px; text-align: center;">${discountPercent}%</td>
+                <td style="border: 1px solid #ccc; padding: 2px; text-align: right;">${formatCurrency(itemTotal).replace('MXN','')}</td>
             `;
             pdfQuoteBodyEl.appendChild(row);
         });
         const pdfIva = pdfSubtotal * IVA_RATE;
         const pdfTotal = pdfSubtotal + pdfIva;
-        pdfSubtotalEl.textContent = formatCurrency(pdfSubtotal).replace('MX$', '');
-        pdfIvaEl.textContent = formatCurrency(pdfIva).replace('MX$', '');
-        pdfTotalEl.textContent = formatCurrency(pdfTotal).replace('MX$', '');
+        pdfSubtotalEl.textContent = formatCurrency(pdfSubtotal).replace('MXN','');
+        pdfIvaEl.textContent = formatCurrency(pdfIva).replace('MXN','');
+        pdfTotalEl.textContent = formatCurrency(pdfTotal).replace('MXN','');
 
         const element = document.getElementById('pdf-template');
         const pdfFilename = `Cotizacion_${(folioEl.value || 'SF').replace(/[^a-zA-Z0-9]/g, '_')}_${(clientNameEl.value || 'Cliente').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;

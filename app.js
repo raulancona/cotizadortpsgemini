@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuración ---
+    // <<< ¡CONFIRMA LA URL RAW CORRECTA! >>>
     const CSV_URL = 'https://raw.githubusercontent.com/raulancona/cotizadortpsgemini/main/Lista%20estandar%20Raul.csv';
     const ITEMS_PER_PAGE = 20;
     const IVA_RATE = 0.16;
@@ -11,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     let productMap = new Map();
 
-    // --- Selectores del DOM ---
+    // --- Selectores del DOM (Igual que antes) ---
     const loadingStatusEl = document.getElementById('loading-status');
     const productCountInfoEl = document.getElementById('product-count-info');
     const filterClaveEl = document.getElementById('filter-clave');
@@ -68,39 +69,66 @@ document.addEventListener('DOMContentLoaded', () => {
             const csvText = await response.text();
 
             Papa.parse(csvText, {
+                header: true, // Volvemos a usar encabezados
                 skipEmptyLines: 'greedy',
-                encoding: "UTF-8",
+                encoding: "UTF-8", // Maneja BOM
+                transformHeader: header => header.trim(), // Limpia espacios encabezado
                 complete: (results) => {
-                    console.log("Datos crudos:", results.data);
+                    if (results.errors.length > 0) {
+                        console.warn("Errores de parseo:", results.errors);
+                        // Manejo de error... (igual que antes)
+                    }
 
-                    if (!results.data || results.data.length < 2) { /*...*/ } // Manejo de error igual
+                    console.log("Resultados de PapaParse (con encabezados):", results); // Log para ver las keys
 
-                    const dataRows = results.data.slice(1);
                     productMap.clear();
-                    allProducts = dataRows
-                        .map((row, index) => {
-                            const clave = String(row[0] || '').trim();
-                            const descripcion = String(row[1] || '').trim();
-                            const precioStrRaw = String(row[2] || '0');
+                    allProducts = results.data
+                        .map((p, index) => {
+                            // --- VOLVIENDO A LEER POR NOMBRE DE COLUMNA (del CSV corregido) ---
+                            // Asegúrate que tu CSV tenga EXACTAMENTE estos encabezados en la primera línea:
+                            // Clave,Descripcion,PrecioPublico
+                            const clave = String(p.Clave || '').trim();
+                            const descripcion = String(p.Descripcion || '').trim();
+                            const precioStrRaw = String(p.PrecioPublico || '0');
+                            const unidadMedida = String(p.UnidadMedida || 'PZA').trim(); // Si tienes esta columna
+
+                            // --- Limpieza de Precio (Importante) ---
                             const precioStrClean = precioStrRaw.replace(/[$,\s]/g, '').replace(/,/g, '');
                             const precio = parseFloat(precioStrClean);
-                            const internalId = `item-${index + 1}-${clave || Math.random().toString(16).slice(2)}`;
+                            // --------------------------------------
 
-                            if (clave && descripcion && !isNaN(precio) && precio >= 0) {
+                            const internalId = `item-${index}-${clave || Math.random().toString(16).slice(2)}`;
+
+                            // --- Validación y Log Detallado ---
+                            const isClaveValid = !!clave;
+                            const isDescValid = !!descripcion;
+                            const isPrecioValid = !isNaN(precio) && precio >= 0;
+                            console.log(`Fila ${index + 2}: Clave='${clave}'(${isClaveValid}), Desc='${descripcion.substring(0,20)}...'(${isDescValid}), PrecioRaw='${precioStrRaw}', PrecioNum=${precio}(${isPrecioValid})`);
+                            // --- Fin Log ---
+
+                            if (isClaveValid && isDescValid && isPrecioValid) {
                                 const productData = {
-                                    clave: clave, descripcion: descripcion, precioBase: precio,
-                                    unidadMedida: 'PZA', id: internalId
+                                    clave: clave,
+                                    descripcion: descripcion,
+                                    precioBase: precio, // Asigna el número limpio
+                                    unidadMedida: unidadMedida,
+                                    id: internalId
                                 };
                                 productMap.set(internalId, productData);
                                 return productData;
                             }
-                            console.warn(`   -> Fila ${index + 2} IGNORADA. Datos:`, row);
+                            console.warn(`   -> Fila ${index + 2} IGNORADA.`);
                             return null;
                         })
                         .filter(p => p !== null);
 
-                    if (allProducts.length === 0) { /*...*/ } // Manejo de error igual
-                    else {
+                    // --- Lógica de éxito/error (igual que antes) ---
+                    if (allProducts.length === 0) {
+                        loadingStatusEl.textContent = `Error: No se cargaron productos válidos.`;
+                        loadingStatusEl.className = 'status-warning';
+                        productCountInfoEl.textContent = `(0 productos - Revisa CSV/Consola)`;
+                        productsBodyEl.innerHTML = `<tr><td colspan="5" class="text-center p-5 text-orange-600">No se pudo procesar ningún producto válido. Revisa la consola (F12) para ver detalles de filas ignoradas y verifica el formato/contenido del CSV.</td></tr>`;
+                    } else {
                         loadingStatusEl.textContent = `Productos cargados:`;
                         loadingStatusEl.className = 'status-success';
                         productCountInfoEl.textContent = `(${allProducts.length})`;
@@ -109,12 +137,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         applyFiltersAndDisplay();
                     }
                 },
-                error: (error) => { /*...*/ } // Manejo de error igual
+                error: (error) => { /* ... (Manejo de error igual) ... */ }
             });
-        } catch (error) { /*...*/ } // Manejo de error igual
-    }
+        } catch (error) { /* ... (Manejo de error igual) ... */ }
+    } // Fin loadProducts
 
-    function applyFiltersAndDisplay() {
+    // --- Resto de funciones (sin cambios desde la respuesta anterior) ---
+    // (applyFiltersAndDisplay, displayCatalogPage, updatePagination, changePage,
+    //  addToQuote, removeFromQuote, updateQuoteDisplay, calculateDiscountedPrice,
+    //  formatCurrency, formatDate, generatePdf, generateWhatsAppMessage, sendWhatsApp)
+    // ... (Asegúrate de que el resto del código esté presente aquí) ...
+     function applyFiltersAndDisplay() {
         const filterClave = filterClaveEl.value.toUpperCase().trim();
         const filterDescripcion = filterDescripcionEl.value.toUpperCase().trim();
         filteredProducts = allProducts.filter(p =>
@@ -140,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.innerHTML = `
                     <td class="align-top">${product.clave}</td>
                     <td class="align-top">${product.descripcion}</td>
-                    <td class="text-right align-top">${formatCurrency(product.precioBase)}</td>
+                    <td class="text-right align-top">${formatCurrency(product.precioBase)}</td> {/* AQUÍ SE USA precioBase */}
                     <td class="text-center align-top">
                         <input type="number" min="1" value="1" class="w-16 border rounded px-1 py-0.5 text-center text-sm product-quantity" data-product-id="${product.id}">
                     </td>
@@ -154,10 +187,38 @@ document.addEventListener('DOMContentLoaded', () => {
         updatePagination(totalPages);
     }
 
-     function updatePagination(totalPages) { /*...*/ } // Igual
-     function changePage(direction) { /*...*/ } // Igual
-     function addToQuote(productId, quantity) { /*...*/ } // Igual
-     function removeFromQuote(productId) { /*...*/ } // Igual
+     function updatePagination(totalPages) {
+        pageInfoEl.textContent = `Página ${currentPage} / ${totalPages > 0 ? totalPages : 1}`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    }
+
+    function changePage(direction) {
+        const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+        if (direction === 'next' && currentPage < totalPages) {
+            currentPage++;
+        } else if (direction === 'prev' && currentPage > 1) {
+            currentPage--;
+        }
+        displayCatalogPage();
+    }
+
+    function addToQuote(productId, quantity) {
+        const product = productMap.get(productId);
+        if (!product || quantity <= 0) return;
+        const existingItem = quoteItems.find(item => item.id === productId);
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            quoteItems.push({ ...product, quantity: quantity });
+        }
+        updateQuoteDisplay();
+    }
+
+    function removeFromQuote(productId) {
+        quoteItems = quoteItems.filter(item => item.id !== productId);
+        updateQuoteDisplay();
+    }
 
     function updateQuoteDisplay() {
         quoteBodyEl.innerHTML = '';
@@ -172,19 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const itemTotal = unitPrice * item.quantity;
                 subtotal += itemTotal;
                 const row = document.createElement('tr');
-                // <<< AJUSTE VISIBILIDAD TABLA UI >>>
-                // Añadimos clase 'quote-description' y 'title' a la descripción
                 row.innerHTML = `
                     <td class="text-center">${index + 1}</td>
                     <td>${item.clave}</td>
-                    <td class="quote-description" title="${item.descripcion}">${item.descripcion}</td> {/* Clase y title añadidos */}
+                    <td class="quote-description" title="${item.descripcion}">${item.descripcion}</td>
                     <td class="text-center">${item.quantity}</td>
                     <td class="text-center">${item.unidadMedida}</td>
                     <td class="text-right">${formatCurrency(unitPrice)}</td>
                     <td class="text-center">${discountPercent}%</td>
                     <td class="text-right">${formatCurrency(itemTotal)}</td>
                     <td class="text-center">
-                        <button class="remove-from-quote-btn text-red-500 hover:text-red-700 font-bold px-1" data-product-id="${item.id}">X</button> {/* Padding reducido */}
+                        <button class="remove-from-quote-btn text-red-500 hover:text-red-700 font-bold px-1" data-product-id="${item.id}">X</button>
                     </td>
                 `;
                 quoteBodyEl.appendChild(row);
@@ -201,9 +260,24 @@ document.addEventListener('DOMContentLoaded', () => {
         generatePdfBtn.disabled = !hasItems;
     }
 
-    function calculateDiscountedPrice(basePrice, discountPercent) { /*...*/ } // Igual
-    function formatCurrency(value) { /*...*/ } // Igual
-    function formatDate(dateString) { /*...*/ } // Igual
+    function calculateDiscountedPrice(basePrice, discountPercent) {
+        const discount = Number(discountPercent) / 100;
+        return Number(basePrice) * (1 - discount);
+    }
+
+    function formatCurrency(value) {
+        const number = Number(value);
+        if (isNaN(number)) return '$0.00';
+        return number.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    }
+
+    function formatDate(dateString) {
+        if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return new Date().toLocaleDateString('es-MX');
+        try {
+             const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } catch (e) { return new Date().toLocaleDateString('es-MX'); }
+    }
 
     function generatePdf() {
         if (quoteItems.length === 0) return;
@@ -224,11 +298,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemTotal = unitPrice * item.quantity;
             pdfSubtotal += itemTotal;
             const row = document.createElement('tr');
-            // <<< AJUSTE PDF: Estilo para forzar salto de línea en descripción >>>
             row.innerHTML = `
                 <td style="border: 1px solid #ccc; padding: 2px 3px; text-align: center;">${index + 1}</td>
                 <td style="border: 1px solid #ccc; padding: 2px 3px;">${item.clave}</td>
-                <td style="border: 1px solid #ccc; padding: 2px 3px; word-wrap: break-word;">${item.descripcion}</td> {/* word-wrap añadido */}
+                <td style="border: 1px solid #ccc; padding: 2px 3px; word-wrap: break-word;">${item.descripcion}</td>
                 <td style="border: 1px solid #ccc; padding: 2px 3px; text-align: center;">${item.quantity}</td>
                 <td style="border: 1px solid #ccc; padding: 2px 3px; text-align: center;">${item.unidadMedida}</td>
                 <td style="border: 1px solid #ccc; padding: 2px 3px; text-align: right;">${formatCurrency(unitPrice)}</td>
@@ -239,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const pdfIva = pdfSubtotal * IVA_RATE;
         const pdfTotal = pdfSubtotal + pdfIva;
-        pdfSubtotalEl.textContent = formatCurrency(pdfSubtotal); // Mantenemos el símbolo $
+        pdfSubtotalEl.textContent = formatCurrency(pdfSubtotal);
         pdfIvaEl.textContent = formatCurrency(pdfIva);
         pdfTotalEl.textContent = formatCurrency(pdfTotal);
 

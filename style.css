@@ -1,0 +1,78 @@
+/* Estilos Base y Scrollbar */
+body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    background-color: #f9fafb; /* Gris muy claro */
+    color: #1f2937; /* Gris oscuro casi negro */
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+/* Ocultar flechas input[type=number] */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Clases para estado de carga */
+.status-loading { color: #6b7280; font-style: italic;} /* Gris */
+.status-success { color: #16a34a; font-weight: 500;} /* Verde */
+.status-warning { color: #f59e0b; font-weight: 500;} /* Naranja */
+.status-error   { color: #dc2626; font-weight: 500;} /* Rojo */
+
+/* Estilos específicos para las tablas en la UI */
+.table-ui th {
+    background-color: #374151; /* Gris más oscuro */
+    color: white;
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    font-size: 0.75rem; /* 12px */
+    font-weight: 600;
+    border-bottom: 1px solid #d1d5db;
+    white-space: nowrap;
+}
+.table-ui td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid #f3f4f6; /* Borde más suave */
+    font-size: 0.75rem; /* 12px */
+    vertical-align: middle; /* Centrado vertical por defecto */
+}
+.table-ui tbody tr:hover {
+    background-color: #e0f2fe; /* Azul muy claro */
+}
+
+/* Ajustes específicos para la tabla de cotización */
+#quote-table th {
+    background-color: #f3f4f6; /* Gris claro */
+    color: #4b5563; /* Gris medio */
+    font-size: 0.68rem; /* 11px */
+    padding: 5px 6px;
+}
+#quote-table td {
+    font-size: 0.68rem; /* 11px */
+    padding: 4px 6px;
+    vertical-align: top; /* Alinear arriba para descripciones largas */
+}
+.quote-description-cell {
+    white-space: normal !important; /* Permitir salto de línea */
+    word-break: break-word;       /* Romper palabras largas */
+    line-height: 1.3;             /* Espaciado línea */
+}
+
+/* Contenedor sticky para la cotización */
+@media (min-width: 1024px) { /* lg: breakpoint de Tailwind */
+    .sticky-quote-container {
+        position: sticky;
+        top: 1.5rem; /* Espacio desde arriba */
+        height: calc(100vh - 3rem); /* Altura máxima menos el padding */
+        display: flex;
+        flex-direction: column;
+    }
+}

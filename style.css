@@ -67,11 +67,11 @@ input[type=number] {
 }
 
 /* Contenedor sticky para la cotización */
-@media (min-width: 1024px) { /* lg: breakpoint de Tailwind */
+@media (min-width: 1024px) {
     .sticky-quote-container {
         position: sticky;
-        top: 1.5rem; /* Espacio desde arriba */
-        height: calc(100vh - 3rem); /* Altura máxima menos el padding */
+        top: 1.5rem;
+        height: calc(100vh - 3rem);
         display: flex;
         flex-direction: column;
     }
